@@ -6,172 +6,145 @@ M.cfg_defaults = function()
 
 	---@class mux.Cfg
 	local out = {
-		dirs = { "~" }, ---@type string[]
+		---@type string[] | fun(): string[]
+		dirs = { "~" },
+		---@type string
 		session_dir = vim.fs.joinpath(cache_dir, "mux.nvim"),
-		-- switch_on_start = false,
 	}
 
 	return out
 end
 
-M.cfg = nil --[[@as mux.Cfg?]]
+---@class mux.PickerItem
+---@field cwd string
+---@field server mux.ServerInfo?
 
-local mkdir = function(dir)
-	if vim.fn.mkdir(dir, "p") ~= 1 then
-		error("Failed to create directory " .. dir)
-	end
+---@class mux.ServerInfo
+---@field socket string
+---@field useractive string
+---@field starttime string
+
+---@return mux.PickerItem
+local get_server_info = function(server)
+	local chan = vim.fn.sockconnect("pipe", server, { rpc = true })
+	assert(chan ~= 0, "Could not connect to server at " .. server)
+	local out = {
+		cwd = vim.rpcrequest(chan, "nvim_call_function", "getcwd", {}),
+		server = {
+			socket = server,
+			useractive = vim.rpcrequest(chan, "nvim_get_vvar", "useractive"),
+			starttime = vim.rpcrequest(chan, "nvim_get_vvar", "starttime"),
+		},
+	}
+	vim.fn.chanclose(chan)
+	return out
 end
 
----@param opts? mux.Cfg
+---@return mux.PickerItem[]
+M.list_servers = function()
+	assert(M.cfg, "Config is empty. Please call mux.setup()")
+
+	local servers = vim.fn.serverlist({ peer = true })
+	for name, type in vim.fs.dir(M.cfg.session_dir) do
+		if type == "socket" then
+			local server = vim.fs.joinpath(M.cfg.session_dir, name)
+			if not vim.tbl_contains(servers, server) then
+				table.insert(servers, server)
+			end
+		end
+	end
+
+	return vim.tbl_map(get_server_info, servers)
+end
+
+M.cfg = nil --[[@as mux.Cfg?]]
+
+---@param opts? Partial<mux.Cfg>
 M.setup = function(opts)
 	if not M.cfg then
 		M.cfg = vim.tbl_deep_extend("force", M.cfg_defaults(), opts or {})
-
-		mkdir(M.cfg.session_dir)
-
-		vim.api.nvim_create_user_command("Mux", function()
-			M.switch()
-		end, { nargs = 0 })
-
-		-- if M.cfg.switch_on_start and not M.is_mux() then
-		-- 	vim.api.nvim_create_autocmd("VimEnter", {
-		-- 		group = vim.api.nvim_create_augroup("mux.nvim"),
-		-- 		once = true,
-		-- 		callback = function()
-		-- 			M.switch()
-		-- 		end,
-		-- 	})
-		-- end
+		vim.api.nvim_create_user_command("Mux", M.switch, { nargs = 0 })
 	end
 end
 
-M.is_mux = function()
-	assert(M.cfg, "Config is missing. Please call mux.setup()")
+---@return mux.PickerItem[]
+M.get_picker_items = function()
+	local options = M.list_servers()
 
-	local session = vim.v.servername
-
-	for _, mux_session in ipairs(M.list_sessions()) do
-		if session == vim.fs.joinpath(M.cfg.session_dir, mux_session) then
-			return true
-		end
+	for _, dir in ipairs(M.list_dirs()) do
+		table.insert(options, { cwd = vim.fs.normalize(dir) })
 	end
 
-	return false
+	return options
 end
 
 M.switch = function()
-	---@type { session_name: string, display_name: string, pipe_basename: string, dir: string? }[]
-	local options = {}
-
-	local sessions = M.list_sessions()
-
-	for _, session in ipairs(sessions) do
-		local opt = {}
-		opt.pipe_basename = session
-		opt.session_name = session:gsub("%.[^.]*$", "")
-		opt.display_name = "[nvim] " .. opt.session_name
-		table.insert(options, opt)
-	end
-
-	for _, dir in ipairs(M.list_dirs()) do
-		local opt = {}
-		opt.pipe_basename = vim.fs.basename(dir) .. ".pipe"
-		opt.display_name = dir
-		opt.dir = dir
-		if not vim.tbl_contains(sessions, opt.session_name) then
-			table.insert(options, opt)
-		end
-	end
-
-	vim.ui.select(options, {
-		format_item = function(x)
-			return x.display_name
+	vim.ui.select(M.get_picker_items(), {
+		---@param item mux.PickerItem
+		format_item = function(item)
+			local socket = item.server and item.server.socket
+			local icon = socket == vim.v.servername and "" or socket and "" or " "
+			return icon .. "  " .. vim.fn.fnamemodify(item.cwd, ":~")
 		end,
 		prompt = "Switch nvim session",
 	}, function(item, idx)
 		if item and idx then
-			if item.dir then
-				M.new_session(item.dir)
+			if item.server then
+				M.connect(item.server.socket)
+			else
+				M.connect(M.spawn_nvim(item.cwd))
 			end
-			M.switch_session(item.pipe_basename)
 		end
 	end)
 end
 
 ---@return string[]
 M.list_dirs = function()
-	assert(M.cfg, "Config is missing. Please call mux.setup()")
-
-	local dirs = {}
-	for _, dir in ipairs(M.cfg.dirs) do
-		for name, type, err in vim.fs.dir(dir, { err = true, follow = true }) do
-			if err then
-				vim.notify(string.format("Failed to scan dir `%s`: %s", name, err))
-			end
-			if type == "directory" then
-				table.insert(dirs, vim.fs.joinpath(dir, name))
-			end
-		end
-	end
-	return dirs
+	assert(M.cfg, "Config is empty. Please call mux.setup()")
+	return type(M.cfg.dirs) == "table" and M.cfg.dirs or M.cfg.dirs()
 end
 
----@return string[]
-M.list_sessions = function()
-	assert(M.cfg, "Config is missing. Please call mux.setup()")
-
-	local sessions = {}
-	for name, type, err in vim.fs.dir(M.cfg.session_dir) do
-		if err then
-			vim.notify(string.format("Failed to scan dir `%s`: %s", name, err))
-		end
-		if type == "socket" then
-			table.insert(sessions, name)
-		end
-	end
-	return sessions
-end
-
-M.new_session = function(dir)
-	assert(M.cfg, "Config is missing. Please call mux.setup()")
+---@return string
+M.spawn_nvim = function(dir)
+	assert(M.cfg, "Config is empty. Please call mux.setup()")
 
 	dir = vim.fs.normalize(dir)
 	local stat = vim.uv.fs_stat(dir)
 	assert(stat and stat.type == "directory", string.format("`%s` is not a directory", dir))
 
-	local session_name = vim.fs.basename(dir) .. ".pipe"
-	local session_file = vim.fs.joinpath(M.cfg.session_dir, session_name)
-	local cmd = { "nvim", "--headless", "--listen", session_file }
+	local server_name = vim.fs.basename(dir) .. os.date("%Y%m%d-%H%M%S") .. ".pipe"
+	local server_file = vim.fs.joinpath(M.cfg.session_dir, server_name)
+	local cmd = { "nvim", "--headless", "--listen", server_file }
 	local cmd_str = table.concat(cmd, " ")
 
-	vim.print(string.format("Starting session `%s`", cmd_str))
-
-	local chan = vim.fn.jobstart(cmd, {
-		detach = true,
-		cwd = dir,
-	})
+	local chan = vim.fn.jobstart(cmd, { detach = true, cwd = dir })
 
 	if chan == 0 or chan == -1 then
-		error(string.format("Failed to run command `%s`", cmd_str))
+		error(string.format("Failed to spawn nvim with command `%s`", cmd_str))
 	end
+
+	return server_file
 end
 
----@param session_name string
-M.switch_session = function(session_name)
-	assert(M.cfg, "Config is missing. Please call mux.setup()")
+---@param server string
+---@param detach boolean?
+M.connect = function(server, detach)
+	assert(M.cfg, "Config is empty. Please call mux.setup()")
 
-	local ok = vim.wait(500, function()
-		for _, session in ipairs(M.list_sessions()) do
-			if session == session_name then
-				vim.print("connecting to " .. vim.inspect(vim.fs.joinpath(M.cfg.session_dir, session_name)))
-				vim.cmd.connect(vim.fs.joinpath(M.cfg.session_dir, session_name))
-				return true
-			end
-		end
-		return false
-	end)
+	if server == vim.v.servername then
+		return
+	end
 
-	assert(ok, "Failed to connect to session " .. session_name)
+	if detach == nil then
+		detach = false
+	end
+
+	-- If the server has just been started (e.g. by M.spawn_nvim()) it might
+	-- take a little while to actually get ready, so we should check if it
+	-- exists.
+	local ok = vim.wait(1000, function() return vim.uv.fs_stat(server) ~= nil end)
+	assert(ok, "Failed to connect to session " .. server)
+	vim.cmd({ cmd = "connect", args = { server }, bang = detach })
 end
 
 return M
