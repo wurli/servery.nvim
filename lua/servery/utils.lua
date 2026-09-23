@@ -17,4 +17,10 @@ M.time_since = function(t, finish)
 	end
 end
 
+M.mkdir = function(dir)
+	if vim.fn.mkdir(dir, "p") ~= 1 then
+		error("Failed to create directory " .. dir)
+	end
+end
+
 return M

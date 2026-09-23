@@ -23,7 +23,7 @@ M.select = function(items)
 		vim.keymap.set("n", "<enter>", function()
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 			if item then
-				require("servery").switch_to(item)
+				require("servery").connect({ dir = item.cwd, server = vim.tbl_get(item, "server", "socket") })
 				-- Close the selection window when we switch to a new session
 				vim.cmd.bdelete()
 			end
@@ -41,7 +41,7 @@ M.select = function(items)
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 			if item then
 				-- TODO: warn unsaved files, etc?
-				require("servery").switch_to(item, true)
+				require("servery").connect({ dir = item.cwd, server = vim.tbl_get(item, "server", "socket") }, true)
 				M.select()
 			end
 		end, { buf = M.buf })

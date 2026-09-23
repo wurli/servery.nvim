@@ -40,7 +40,7 @@ local get_server_info = function(server)
 	return out
 end
 
----@return servery.PickerItem[]
+---@return { cwd: string, server: servery.ServerInfo }[]
 M.list_servers = function()
 	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
@@ -63,7 +63,16 @@ M.cfg = nil --[[@as servery.Cfg?]]
 M.setup = function(opts)
 	if not M.cfg then
 		M.cfg = vim.tbl_deep_extend("force", M.cfg_defaults(), opts or {})
-		vim.api.nvim_create_user_command("Sv", M.switch, { nargs = 0 })
+		require("servery.utils").mkdir(M.cfg.session_dir)
+		vim.api.nvim_create_user_command("Sv", function(args)
+			local arg = args.fargs[1]
+			local which = tonumber(arg)
+			which = which and math.floor(which)
+
+			assert(which or not arg, string.format("Argument must be a number, not '%s'", arg))
+
+			M.switch({ prev = which })
+		end, { nargs = "?" })
 	end
 end
 
@@ -104,38 +113,38 @@ M.get_picker_items = function()
 	return options
 end
 
-M.switch = function()
+---@param opts? { server: string?, dir: string?, prev: integer? }
+M.switch = function(opts)
+	opts = opts or {}
+
+	if opts.server or opts.dir then
+		M.connect(opts)
+		return
+	end
+
+	if opts.prev then
+		local servers = vim.tbl_filter(function(s) return s.server.socket ~= vim.v.servername end, M.list_servers())
+		table.sort(servers, function(a, b) return a.server.useractive > b.server.useractive end)
+
+		if servers[opts.prev] then
+			M.connect({ server = servers[opts.prev].server.socket })
+		else
+			print("No such server running")
+		end
+		return
+	end
+
 	require("servery.ui").select(M.get_picker_items())
-	-- vim.ui.select(M.get_picker_items(), {
-	-- 	---@param item servery.PickerItem
-	-- 	format_item = function(item)
-	-- 		local socket = item.server and item.server.socket
-	-- 		local icon = socket == vim.v.servername and "" or socket and "" or " "
-	--
-	-- 		local starttime = item.server and item.server.starttime
-	-- 		local run_time = starttime and "  (" .. utils.time_since(starttime / 1e9) .. ")" or ""
-	--
-	-- 		return icon .. "  " .. vim.fn.fnamemodify(item.cwd, ":~") .. run_time
-	-- 	end,
-	-- 	prompt = "Switch Sessions",
-	-- }, function(item, idx)
-	-- 	if item and idx then
-	-- 		if item.server then
-	-- 			M.connect(item.server.socket)
-	-- 		else
-	-- 			M.connect(M.spawn_nvim(item.cwd))
-	-- 		end
-	-- 	end
-	-- end)
 end
 
----@param item servery.PickerItem
+---@param opts { dir: string?, server: string? }
 ---@param detach boolean?
-M.switch_to = function(item, detach)
-	if item.server then
-		M.connect(item.server.socket, detach)
+M.connect = function(opts, detach)
+	assert(opts.dir or opts.server, "Must supply `dir` or `server`")
+	if opts.server then
+		M.switch_to(opts.server, detach)
 	else
-		M.connect(M.spawn_nvim(item.cwd), detach)
+		M.switch_to(M.spawn_nvim(opts.dir), detach)
 	end
 end
 
@@ -145,7 +154,10 @@ M.list_dirs = function()
 	return type(M.cfg.dirs) == "table" and M.cfg.dirs or M.cfg.dirs()
 end
 
+---Internal helper; use `connect()` insteaad
+---
 ---@return string
+---@private
 M.spawn_nvim = function(dir)
 	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
@@ -167,17 +179,16 @@ M.spawn_nvim = function(dir)
 	return server_file
 end
 
+---Internal helper; use `connect()` instead
+---
 ---@param server string
 ---@param detach boolean?
-M.connect = function(server, detach)
+---@private
+M.switch_to = function(server, detach)
 	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
 	if server == vim.v.servername then
 		return
-	end
-
-	if detach == nil then
-		detach = false
 	end
 
 	-- If the server has just been started (e.g. by M.spawn_nvim()) it might
@@ -185,7 +196,7 @@ M.connect = function(server, detach)
 	-- exists.
 	local ok = vim.wait(1000, function() return vim.uv.fs_stat(server) ~= nil end)
 	assert(ok, "Failed to connect to session " .. server)
-	vim.cmd({ cmd = "connect", args = { server }, bang = detach })
+	vim.cmd({ cmd = "connect", args = { server }, bang = detach ~= nil })
 end
 
 return M
