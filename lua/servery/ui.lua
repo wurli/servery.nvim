@@ -1,4 +1,4 @@
-local utils = require("mux.utils")
+local utils = require("servery.utils")
 
 local M = {}
 
@@ -6,12 +6,12 @@ M.buf = -99
 
 M.items = {}
 
----@param items? mux.PickerItem[]
+---@param items? servery.PickerItem[]
 M.select = function(items)
 	if items then
 		assert(type(items) == "table")
 	end
-	M.items = items or require("mux").get_picker_items()
+	M.items = items or require("servery").get_picker_items()
 
 	if not vim.api.nvim_buf_is_valid(M.buf) then
 		M.buf = vim.api.nvim_create_buf(false, true)
@@ -23,7 +23,7 @@ M.select = function(items)
 		vim.keymap.set("n", "<enter>", function()
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 			if item then
-				require("mux").switch_to(item)
+				require("servery").switch_to(item)
 				-- Close the selection window when we switch to a new session
 				vim.cmd.bdelete()
 			end
@@ -32,7 +32,7 @@ M.select = function(items)
 		vim.keymap.set("n", "S", function()
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 			if item then
-				require("mux").spawn_nvim(item.cwd)
+				require("servery").spawn_nvim(item.cwd)
 				vim.defer_fn(function() M.select() end, 400)
 			end
 		end, { buf = M.buf })
@@ -41,7 +41,7 @@ M.select = function(items)
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 			if item then
 				-- TODO: warn unsaved files, etc?
-				require("mux").switch_to(item, true)
+				require("servery").switch_to(item, true)
 				M.select()
 			end
 		end, { buf = M.buf })

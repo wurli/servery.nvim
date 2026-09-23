@@ -4,45 +4,45 @@ M.cfg_defaults = function()
 	local cache_dir = vim.fn.stdpath("cache")
 	assert(type(cache_dir) == "string")
 
-	---@class mux.Cfg
+	---@class servery.Cfg
 	local out = {
 		---@type string[] | fun(): string[]
 		dirs = { "~" },
 		---@type string
-		session_dir = vim.fs.joinpath(cache_dir, "mux.nvim"),
+		session_dir = vim.fs.joinpath(cache_dir, "servery.nvim"),
 	}
 
 	return out
 end
 
----@class mux.PickerItem
+---@class servery.PickerItem
 ---@field cwd string
----@field server mux.ServerInfo?
+---@field server servery.ServerInfo?
 
----@class mux.ServerInfo
+---@class servery.ServerInfo
 ---@field socket string
----@field useractive string
----@field starttime string
+---@field useractive integer
+---@field starttime integer
 
----@return mux.PickerItem
+---@return servery.PickerItem
 local get_server_info = function(server)
 	local chan = vim.fn.sockconnect("pipe", server, { rpc = true })
 	assert(chan ~= 0, "Could not connect to server at " .. server)
 	local out = {
-		cwd = vim.rpcrequest(chan, "nvim_call_function", "getcwd", {}),
+		cwd = vim.rpcrequest(chan, "nvim_call_function", "getcwd", {}) --[[@as string]],
 		server = {
 			socket = server,
-			useractive = vim.rpcrequest(chan, "nvim_get_vvar", "useractive"),
-			starttime = vim.rpcrequest(chan, "nvim_get_vvar", "starttime"),
+			useractive = vim.rpcrequest(chan, "nvim_get_vvar", "useractive") --[[@as integer]],
+			starttime = vim.rpcrequest(chan, "nvim_get_vvar", "starttime") --[[@as integer]],
 		},
 	}
 	vim.fn.chanclose(chan)
 	return out
 end
 
----@return mux.PickerItem[]
+---@return servery.PickerItem[]
 M.list_servers = function()
-	assert(M.cfg, "Config is empty. Please call mux.setup()")
+	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
 	local servers = vim.fn.serverlist({ peer = true })
 	for name, type in vim.fs.dir(M.cfg.session_dir) do
@@ -57,17 +57,17 @@ M.list_servers = function()
 	return vim.tbl_map(get_server_info, servers)
 end
 
-M.cfg = nil --[[@as mux.Cfg?]]
+M.cfg = nil --[[@as servery.Cfg?]]
 
----@param opts? Partial<mux.Cfg>
+---@param opts? Partial<servery.Cfg>
 M.setup = function(opts)
 	if not M.cfg then
 		M.cfg = vim.tbl_deep_extend("force", M.cfg_defaults(), opts or {})
-		vim.api.nvim_create_user_command("Mux", M.switch, { nargs = 0 })
+		vim.api.nvim_create_user_command("Sv", M.switch, { nargs = 0 })
 	end
 end
 
----@return mux.PickerItem[]
+---@return servery.PickerItem[]
 M.get_picker_items = function()
 	local options = M.list_servers()
 
@@ -105,9 +105,9 @@ M.get_picker_items = function()
 end
 
 M.switch = function()
-	require("mux.ui").select(M.get_picker_items())
+	require("servery.ui").select(M.get_picker_items())
 	-- vim.ui.select(M.get_picker_items(), {
-	-- 	---@param item mux.PickerItem
+	-- 	---@param item servery.PickerItem
 	-- 	format_item = function(item)
 	-- 		local socket = item.server and item.server.socket
 	-- 		local icon = socket == vim.v.servername and "" or socket and "" or " "
@@ -129,7 +129,7 @@ M.switch = function()
 	-- end)
 end
 
----@param item mux.PickerItem
+---@param item servery.PickerItem
 ---@param detach boolean?
 M.switch_to = function(item, detach)
 	if item.server then
@@ -141,13 +141,13 @@ end
 
 ---@return string[]
 M.list_dirs = function()
-	assert(M.cfg, "Config is empty. Please call mux.setup()")
+	assert(M.cfg, "Config is empty. Please call servery.setup()")
 	return type(M.cfg.dirs) == "table" and M.cfg.dirs or M.cfg.dirs()
 end
 
 ---@return string
 M.spawn_nvim = function(dir)
-	assert(M.cfg, "Config is empty. Please call mux.setup()")
+	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
 	dir = vim.fs.normalize(dir)
 	local stat = vim.uv.fs_stat(dir)
@@ -170,7 +170,7 @@ end
 ---@param server string
 ---@param detach boolean?
 M.connect = function(server, detach)
-	assert(M.cfg, "Config is empty. Please call mux.setup()")
+	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
 	if server == vim.v.servername then
 		return
