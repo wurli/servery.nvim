@@ -75,27 +75,68 @@ M.get_picker_items = function()
 		table.insert(options, { cwd = vim.fs.normalize(dir) })
 	end
 
+	table.sort(options, function(a, b)
+		if a.server and not b.server then
+			return true
+		end
+
+		if b.server and not a.server then
+			return false
+		end
+
+		if a.server and b.server then
+			if a.server.socket == vim.v.servername then
+				return true
+			end
+
+			if b.server.socket == vim.v.servername then
+				return false
+			end
+
+			if a.cwd == b.cwd then
+				return a.server.starttime < b.server.starttime
+			end
+		end
+
+		return a.cwd < b.cwd
+	end)
+
 	return options
 end
 
 M.switch = function()
-	vim.ui.select(M.get_picker_items(), {
-		---@param item mux.PickerItem
-		format_item = function(item)
-			local socket = item.server and item.server.socket
-			local icon = socket == vim.v.servername and "" or socket and "" or " "
-			return icon .. "  " .. vim.fn.fnamemodify(item.cwd, ":~")
-		end,
-		prompt = "Switch nvim session",
-	}, function(item, idx)
-		if item and idx then
-			if item.server then
-				M.connect(item.server.socket)
-			else
-				M.connect(M.spawn_nvim(item.cwd))
-			end
-		end
-	end)
+	require("mux.ui").select(M.get_picker_items())
+	-- vim.ui.select(M.get_picker_items(), {
+	-- 	---@param item mux.PickerItem
+	-- 	format_item = function(item)
+	-- 		local socket = item.server and item.server.socket
+	-- 		local icon = socket == vim.v.servername and "" or socket and "" or " "
+	--
+	-- 		local starttime = item.server and item.server.starttime
+	-- 		local run_time = starttime and "  (" .. utils.time_since(starttime / 1e9) .. ")" or ""
+	--
+	-- 		return icon .. "  " .. vim.fn.fnamemodify(item.cwd, ":~") .. run_time
+	-- 	end,
+	-- 	prompt = "Switch Sessions",
+	-- }, function(item, idx)
+	-- 	if item and idx then
+	-- 		if item.server then
+	-- 			M.connect(item.server.socket)
+	-- 		else
+	-- 			M.connect(M.spawn_nvim(item.cwd))
+	-- 		end
+	-- 	end
+	-- end)
+end
+
+---@param item mux.PickerItem
+---@param detach boolean?
+M.switch_to = function(item, detach)
+	if item.server then
+		M.connect(item.server.socket, detach)
+	else
+		M.connect(M.spawn_nvim(item.cwd), detach)
+	end
 end
 
 ---@return string[]
@@ -114,7 +155,7 @@ M.spawn_nvim = function(dir)
 
 	local server_name = vim.fs.basename(dir) .. os.date("%Y%m%d-%H%M%S") .. ".pipe"
 	local server_file = vim.fs.joinpath(M.cfg.session_dir, server_name)
-	local cmd = { "nvim", "--headless", "--listen", server_file }
+	local cmd = { vim.v.progpath, "--headless", "--listen", server_file }
 	local cmd_str = table.concat(cmd, " ")
 
 	local chan = vim.fn.jobstart(cmd, { detach = true, cwd = dir })
