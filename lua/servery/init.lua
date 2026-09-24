@@ -196,16 +196,33 @@ M.list_servers = function()
 	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
 	local servers = vim.fn.serverlist({ peer = true })
+
+	local out = {}
+
+	for _, server in ipairs(servers) do
+		-- See :h serverstart
+		-- serverstart() generates names like:
+		--   stdpath("run").."/{name}.{pid}.{counter}"
+		-- {name} is "nvim" for servers which are generated normally (i.e. by
+		-- starting nvim). Processes which embed nvim, however, (should) use
+		-- a different {name}. We don't want to surface embedded nvim sessions
+		-- to the user.
+		local name = server:match("/([^/]+)%.[^.]+%.[^.]+$")
+		if name == "nvim" then
+			table.insert(out, server)
+		end
+	end
+
 	for name, type in vim.fs.dir(M.cfg.session_dir) do
 		if type == "socket" then
 			local server = vim.fs.joinpath(M.cfg.session_dir, name)
-			if not vim.tbl_contains(servers, server) then
+			if not vim.tbl_contains(out, server) then
 				table.insert(servers, server)
 			end
 		end
 	end
 
-	return vim.tbl_map(get_server_info, servers)
+	return vim.tbl_map(get_server_info, out)
 end
 
 ---@return servery.PickerItem[]
