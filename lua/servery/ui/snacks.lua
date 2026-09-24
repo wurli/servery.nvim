@@ -4,7 +4,7 @@ local M = {}
 M.select = function()
 	assert(Snacks ~= nil, '`Snacks` not found. `ui = "snacks"` requires snacks.nvim to be installed!')
 
-	Snacks.picker.pick("servery_sessions", {
+	Snacks.picker.pick("switch_nvim_session", {
 		finder = function()
 			local new_items = require("servery").get_picker_items() --[[@as snacks.picker.finder.result]]
 			for i, item in ipairs(new_items) do
