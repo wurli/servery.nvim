@@ -82,7 +82,13 @@ function PickerItem:display_name()
 	if self:status() == "Inactive" then
 		return dir
 	else
-		return vim.fs.basename(dir)
+		local curr_dir = vim.fs.basename(dir)
+		local original_cwd = self.server and self.server.original_cwd
+		if original_cwd and original_cwd ~= self.cwd then
+			local original_dir = vim.fs.basename(vim.fn.fnamemodify(original_cwd, ":~"))
+			return original_dir .. "( " .. curr_dir .. ")"
+		end
+		return curr_dir
 	end
 end
 
@@ -98,10 +104,9 @@ end
 
 ---@class servery.ServerInfo
 ---@field socket string
+---@field original_cwd string?
 ---@field useractive integer
 ---@field starttime integer
-
-M.cfg = nil --[[@as servery.Cfg?]]
 
 ---@type table<string, vim.api.keyset.highlight>
 local highlights = {
@@ -121,10 +126,18 @@ local set_highlights = function()
 	end
 end
 
+M.cfg = nil --[[@as servery.Cfg?]]
+
+-- A neovim session may move to a different cwd, e.g. using :cd. It's worth
+-- showing the user where the session originally started so the name doesn't
+-- change too much - this could add cognitive overhead otherwise.
+M.original_cwd = nil --[[@as string?]]
+
 ---@param opts? Partial<servery.Cfg>
 M.setup = function(opts)
 	if not M.cfg then
 		M.cfg = vim.tbl_deep_extend("force", M.cfg_defaults(), opts or {})
+		M.original_cwd = vim.fn.getcwd()
 
 		set_highlights()
 		vim.api.nvim_create_autocmd("ColorScheme", { callback = set_highlights })
@@ -146,6 +159,8 @@ M.setup = function(opts)
 	end
 end
 
+local nilify = function(x) return not vim.isnil(x) and x end
+
 ---@return servery.PickerItemServer
 local get_server_info = function(server)
 	local chan = vim.fn.sockconnect("pipe", server, { rpc = true })
@@ -154,6 +169,7 @@ local get_server_info = function(server)
 		socket = server,
 		useractive = vim.rpcrequest(chan, "nvim_get_vvar", "useractive") --[[@as integer]],
 		starttime = vim.rpcrequest(chan, "nvim_get_vvar", "starttime") --[[@as integer]],
+		original_cwd = nilify(vim.rpcrequest(chan, "nvim_exec_lua", 'return require("servery").original_cwd', {})) --[[@as string?]],
 	})
 	vim.fn.chanclose(chan)
 	return out
