@@ -18,7 +18,8 @@
       "*.log"
     ],
     "library": [
-      "$VIMRUNTIME/lua"
+      "$VIMRUNTIME/lua",
+	  "$HOME/.local/share/nvim/lazy/snacks.nvim/"
     ],
     "workspaceRoots": [
       "./lua"
