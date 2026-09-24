@@ -195,7 +195,7 @@ end
 M.list_servers = function()
 	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
-	local servers = vim.fn.serverlist({ peer = true })
+	local servers = vim.fn.serverlist({ peer = true }) --[[@as string[] ]]
 
 	local out = {}
 
@@ -217,7 +217,7 @@ M.list_servers = function()
 		if type == "socket" then
 			local server = vim.fs.joinpath(M.cfg.session_dir, name)
 			if not vim.tbl_contains(out, server) then
-				table.insert(servers, server)
+				table.insert(out, server)
 			end
 		end
 	end
