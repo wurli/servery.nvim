@@ -26,10 +26,32 @@ end
 
 M.cfg = nil --[[@as servery.Cfg?]]
 
+---@type table<string, vim.api.keyset.highlight>
+local highlights = {
+	ServeryLineCurrent = { link = "@keyword" },
+	ServeryLineActive = { link = "Normal" },
+	ServeryLineInactive = { link = "Normal" },
+	ServeryIconCurrent = { link = "CursorLineNr" },
+	ServeryIconActive = { link = "@label" },
+	ServeryIconInactive = { link = "ComplHint" },
+	ServeryTime = { link = "Comment" },
+}
+
+local set_highlights = function()
+	for group, hl in pairs(highlights) do
+		hl.default = true
+		vim.api.nvim_set_hl(0, group, hl)
+	end
+end
+
 ---@param opts? Partial<servery.Cfg>
 M.setup = function(opts)
 	if not M.cfg then
 		M.cfg = vim.tbl_deep_extend("force", M.cfg_defaults(), opts or {})
+
+		set_highlights()
+		vim.api.nvim_create_autocmd("ColorScheme", { callback = set_highlights })
+
 		require("servery.utils").mkdir(M.cfg.session_dir)
 		vim.api.nvim_create_user_command("Sv", function(args)
 			local arg = args.fargs[1]

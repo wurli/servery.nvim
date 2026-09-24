@@ -6,41 +6,8 @@ M.buf = -99
 M.ns = vim.api.nvim_create_namespace("servery.ui")
 M.items = {}
 
----@type table<string, vim.api.keyset.highlight>
-local highlights = {
-	ServeryLineCurrent = { link = "@keyword" },
-	ServeryLineActive = { link = "Normal" },
-	ServeryLineInactive = { link = "Normal" },
-	ServeryIconCurrent = { link = "CursorLineNr" },
-	ServeryIconActive = { link = "@label" },
-	ServeryIconInactive = { link = "ComplHint" },
-	ServeryTime = { link = "Comment" },
-}
-
-local set_highlights = function()
-	for group, hl in pairs(highlights) do
-		hl.default = true
-		vim.api.nvim_set_hl(0, group, hl)
-	end
-end
-
-local did_setup = false
-
-M.setup = function()
-	if did_setup then
-		return
-	end
-
-	did_setup = true
-
-	set_highlights()
-	vim.api.nvim_create_autocmd("ColorScheme", { callback = set_highlights })
-end
-
 ---@param items? servery.PickerItem[]
 M.select = function(items)
-	M.setup()
-
 	if items then
 		assert(type(items) == "table")
 	end
