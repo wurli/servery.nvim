@@ -38,7 +38,11 @@ M.setup = function(opts)
 
 			assert(which or not arg, string.format("Argument must be a number, not '%s'", arg))
 
-			M.switch({ prev = which })
+			if which then
+				M.switch({ prev = which })
+			else
+				M.show_ui()
+			end
 		end, { nargs = "?" })
 	end
 end
