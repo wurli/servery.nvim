@@ -2,6 +2,8 @@ local utils = require("servery.utils")
 
 local M = {}
 
+---@alias servery.ui_opts "builtin" | "snacks"
+
 M.cfg_defaults = function()
 	local cache_dir = vim.fn.stdpath("cache")
 	assert(type(cache_dir) == "string")
@@ -12,6 +14,8 @@ M.cfg_defaults = function()
 		dirs = { "~" },
 		---@type string
 		session_dir = vim.fs.joinpath(cache_dir, "servery.nvim"),
+		---@type servery.ui_opts
+		ui = "builtin",
 	}
 
 	return out
@@ -67,6 +71,15 @@ function PickerItem:switch(detach)
 end
 
 function PickerItem:spawn_new() M.spawn_nvim(self.cwd) end
+
+function PickerItem:display_name()
+	local dir = vim.fn.fnamemodify(self.cwd, ":~")
+	if self:status() == "Inactive" then
+		return dir
+	else
+		return vim.fs.basename(dir)
+	end
+end
 
 ---@class servery.ServerInfo
 ---@field socket string
@@ -217,9 +230,17 @@ M.switch = function(opts)
 end
 
 ---@param items? servery.PickerItem[]
-M.show_ui = function(items)
-	--
-	require("servery.ui").select(items or M.get_picker_items())
+---@param ui? servery.ui_opts
+M.show_ui = function(items, ui)
+	assert(M.cfg, "Config is empty. Please call servery.setup()")
+
+	ui = ui or M.cfg.ui
+
+	if ui == "builtin" then
+		require("servery.ui.builtin").select(items)
+	elseif ui == "snacks" then
+		require("servery.ui.snacks").select(items)
+	end
 end
 
 ---@return string

@@ -62,9 +62,8 @@ M.select = function(items)
 
 	for _, item in ipairs(M.items) do
 		local starttime = item.server and item.server.starttime
-		local spacer2 = starttime and "  " or ""
+		local spacer = starttime and "  " or ""
 		local run_time = item:time_since_active() or ""
-		local dir = vim.fn.fnamemodify(item.cwd, ":~")
 		local status = item:status()
 
 		local line = ""
@@ -79,8 +78,8 @@ M.select = function(items)
 		table.insert(line_marks, { 0, indent_mark })
 
 		for _, part in ipairs({
-			{ dir, "ServeryLine" .. status },
-			{ spacer2, "Normal" },
+			{ item:display_name(), "ServeryLine" .. status },
+			{ spacer, "Normal" },
 			{ run_time, "ServeryTime" },
 		}) do
 			local mark_start = #line
