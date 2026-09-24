@@ -247,7 +247,7 @@ M.show_ui = function(items, ui)
 	if ui == "builtin" then
 		require("servery.ui.builtin").select(items)
 	elseif ui == "snacks" then
-		require("servery.ui.snacks").select(items)
+		require("servery.ui.snacks").select()
 	end
 end
 
