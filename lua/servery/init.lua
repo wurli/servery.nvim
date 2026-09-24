@@ -5,15 +5,10 @@ local M = {}
 ---@alias servery.ui_opts "builtin" | "snacks"
 
 M.cfg_defaults = function()
-	local cache_dir = vim.fn.stdpath("cache")
-	assert(type(cache_dir) == "string")
-
 	---@class servery.Cfg
 	local out = {
 		---@type string[] | fun(): string[]
 		dirs = { "~" },
-		---@type string
-		session_dir = vim.fs.joinpath(cache_dir, "servery.nvim"),
 		---@type servery.ui_opts
 		ui = "builtin",
 		icons = {
@@ -195,7 +190,7 @@ end
 M.list_servers = function()
 	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
-	local servers = vim.fn.serverlist({ peer = true })
+	local servers = vim.fn.serverlist({ peer = true }) --[[@as string[] ]]
 
 	local out = {}
 
@@ -207,15 +202,16 @@ M.list_servers = function()
 		-- starting nvim). Processes which embed nvim, however, (should) use
 		-- a different {name}. We don't want to surface embedded nvim sessions
 		-- to the user.
-		local name = server:match("/([^/]+)%.[^.]+%.[^.]+$")
-		if name == "nvim" then
+		local name = vim.fs.basename(server):match("([^.]+)%..+%.%d+$")
+		if name == "nvim" or name == "servery" then
 			table.insert(out, server)
 		end
 	end
 
-	for name, type in vim.fs.dir(M.cfg.session_dir) do
+	local run_dir = vim.fn.stdpath("run") --[[@as string]]
+	for name, type in vim.fs.dir(run_dir) do
 		if type == "socket" then
-			local server = vim.fs.joinpath(M.cfg.session_dir, name)
+			local server = vim.fs.joinpath(run_dir, name)
 			if not vim.tbl_contains(out, server) then
 				table.insert(servers, server)
 			end
@@ -305,6 +301,22 @@ M.show_ui = function(ui)
 	end
 end
 
+local make_session_name = function(dir)
+	local run_dir = vim.fn.stdpath("run") --[[@as string]]
+	local name = "servery"
+	-- nvim usually includes the PID in the address, but we construct the
+	-- address _before_ starting nvim, so use something unique-ish like the
+	-- CWD basename instead
+	local pid = vim.fs.basename(dir)
+	local address = vim.fs.joinpath(run_dir, name .. "." .. pid .. ".")
+	local existing = vim.fn.glob(address .. ".*", false, true)
+
+	local counts = vim.tbl_map(function(s) return tonumber(s:match("%d+$")) or 0 end, existing)
+	local max_count = math.max(0, unpack(counts))
+
+	return address .. (max_count + 1)
+end
+
 ---@return string
 M.spawn_nvim = function(dir)
 	assert(M.cfg, "Config is empty. Please call servery.setup()")
@@ -313,9 +325,8 @@ M.spawn_nvim = function(dir)
 	local stat = vim.uv.fs_stat(dir)
 	assert(stat and stat.type == "directory", string.format("`%s` is not a directory", dir))
 
-	local server_name = vim.fs.basename(dir) .. os.date("%Y%m%d-%H%M%S") .. ".pipe"
-	local server_file = vim.fs.joinpath(M.cfg.session_dir, server_name)
-	local cmd = { vim.v.progpath, "--headless", "--listen", server_file }
+	local address = make_session_name(dir)
+	local cmd = { vim.v.progpath, "--headless", "--listen", address }
 	local cmd_str = table.concat(cmd, " ")
 
 	local chan = vim.fn.jobstart(cmd, { detach = true, cwd = dir })
@@ -324,7 +335,7 @@ M.spawn_nvim = function(dir)
 		error(string.format("Failed to spawn nvim with command `%s`", cmd_str))
 	end
 
-	return server_file
+	return address
 end
 
 ---Internal helper; use `connect()` instead
