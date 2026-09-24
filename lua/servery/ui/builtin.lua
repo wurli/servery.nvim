@@ -46,13 +46,8 @@ M.select = function(items)
 
 		vim.keymap.set("n", "x", function()
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
-			if item and item.server then
-				local chan = vim.fn.sockconnect("pipe", item.server.socket, { rpc = true })
-				-- Slightly defer the :qall so we have time to close the channel, rather
-				-- than having it forcibly closed and show an annoying message
-				vim.rpcrequest(chan, "nvim_exec_lua", "vim.defer_fn(vim.cmd.qall, 200)", {})
-				vim.fn.chanclose(chan)
-				vim.defer_fn(function() M.select() end, 600)
+			if item then
+				item:detach()
 			end
 		end, { buf = M.buf })
 	end

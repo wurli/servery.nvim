@@ -81,6 +81,16 @@ function PickerItem:display_name()
 	end
 end
 
+function PickerItem:detach()
+	if self.server then
+		local chan = vim.fn.sockconnect("pipe", self.server.socket, { rpc = true })
+		-- Slightly defer the :qall so we have time to close the channel, rather
+		-- than having it forcibly closed and show an annoying message
+		vim.rpcrequest(chan, "nvim_exec_lua", "vim.defer_fn(vim.cmd.qall, 200)", {})
+		vim.fn.chanclose(chan)
+	end
+end
+
 ---@class servery.ServerInfo
 ---@field socket string
 ---@field useractive integer
@@ -170,13 +180,13 @@ end
 
 ---@return servery.PickerItem[]
 M.get_picker_items = function()
-	local options = M.list_servers()
+	local items = M.list_servers()
 
 	for _, dir in ipairs(M.list_dirs()) do
-		table.insert(options, dir)
+		table.insert(items, dir)
 	end
 
-	table.sort(options, function(a, b)
+	table.sort(items, function(a, b)
 		if a.server and not b.server then
 			return true
 		end
@@ -202,7 +212,7 @@ M.get_picker_items = function()
 		return a.cwd < b.cwd
 	end)
 
-	return options
+	return items
 end
 
 ---@param opts? { server: string?, dir: string?, prev: integer?, detach?: boolean }
