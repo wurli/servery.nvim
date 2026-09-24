@@ -16,6 +16,11 @@ M.cfg_defaults = function()
 		session_dir = vim.fs.joinpath(cache_dir, "servery.nvim"),
 		---@type servery.ui_opts
 		ui = "builtin",
+		icons = {
+			current = "",
+			active = "",
+			inactive = "",
+		},
 	}
 
 	return out
@@ -49,8 +54,8 @@ function PickerItem:status()
 end
 
 function PickerItem:icon()
-	local icons = { Current = "", Active = "", Inactive = "" }
-	return icons[self:status()]
+	assert(M.cfg, "Config is empty. Please call servery.setup()")
+	return M.cfg.icons[string.lower(self:status())] or " "
 end
 
 ---@return string?
