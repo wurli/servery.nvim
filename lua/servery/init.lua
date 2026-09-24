@@ -237,16 +237,16 @@ M.switch = function(opts)
 	error("No options supplied")
 end
 
----@param items? servery.PickerItem[]
 ---@param ui? servery.ui_opts
-M.show_ui = function(items, ui)
+M.show_ui = function(ui)
 	assert(M.cfg, "Config is empty. Please call servery.setup()")
 
 	ui = ui or M.cfg.ui
 
 	if ui == "builtin" then
-		require("servery.ui.builtin").select(items)
+		require("servery.ui.builtin").select()
 	elseif ui == "snacks" then
+		-- Snacks picker auto-refreshes, so don't pass items
 		require("servery.ui.snacks").select()
 	end
 end
