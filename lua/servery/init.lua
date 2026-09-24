@@ -204,9 +204,7 @@ M.get_picker_items = function()
 				return false
 			end
 
-			if a.cwd == b.cwd then
-				return a.server.starttime < b.server.starttime
-			end
+			return a.server.useractive > b.server.useractive
 		end
 
 		return a.cwd < b.cwd
