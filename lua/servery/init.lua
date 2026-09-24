@@ -86,7 +86,7 @@ function PickerItem:display_name()
 		local original_cwd = self.server and self.server.original_cwd
 		if original_cwd and original_cwd ~= self.cwd then
 			local original_dir = vim.fs.basename(vim.fn.fnamemodify(original_cwd, ":~"))
-			return original_dir .. "( " .. curr_dir .. ")"
+			return original_dir .. " ( " .. curr_dir .. ")"
 		end
 		return curr_dir
 	end
