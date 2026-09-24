@@ -1,5 +1,3 @@
-local utils = require("servery.utils")
-
 local M = {}
 
 M.buf = -99
@@ -23,7 +21,7 @@ M.select = function(items)
 		vim.keymap.set("n", "<enter>", function()
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 			if item then
-				require("servery").connect({ dir = item.cwd, server = vim.tbl_get(item, "server", "socket") })
+				item:switch()
 				-- Close the selection window when we switch to a new session
 				vim.cmd.bdelete()
 			end
@@ -32,7 +30,7 @@ M.select = function(items)
 		vim.keymap.set("n", "S", function()
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 			if item then
-				require("servery").switch({ dir = item.cwd })
+				item:spawn_new()
 				vim.defer_fn(function() M.select() end, 400)
 			end
 		end, { buf = M.buf })
@@ -40,9 +38,9 @@ M.select = function(items)
 		vim.keymap.set("n", "<c-g>", function()
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 			if item then
-				-- TODO: warn unsaved files, etc?
-				require("servery").connect({ dir = item.cwd, server = vim.tbl_get(item, "server", "socket") }, true)
-				M.select()
+				item:switch(true)
+				-- Close the selection window when we switch to a new session
+				vim.cmd.bdelete()
 			end
 		end, { buf = M.buf })
 
@@ -63,28 +61,25 @@ M.select = function(items)
 	local marks = {} ---@type [ integer, vim.api.keyset.set_extmark ][][]
 
 	for _, item in ipairs(M.items) do
-		local socket = item.server and item.server.socket
-		local icon = socket == vim.v.servername and "" or ""
 		local starttime = item.server and item.server.starttime
 		local spacer2 = starttime and "  " or ""
-		local run_time = starttime and "(" .. utils.time_since(starttime / 1e9) .. ")" or ""
+		local run_time = item:time_since_active() or ""
 		local dir = vim.fn.fnamemodify(item.cwd, ":~")
-
-		local hl_type = socket and socket == vim.v.servername and "Current" or socket and "Active" or "Inactive"
+		local status = item:status()
 
 		local line = ""
 		local line_marks = {} ---@type [ integer, vim.api.keyset.set_extmark ][]
 
 		---@type vim.api.keyset.set_extmark
 		local indent_mark = {
-			virt_text = { { "  ", "Normal" }, { icon, "ServeryIcon" .. hl_type }, { "  ", "Normal" } },
+			virt_text = { { "  ", "Normal" }, { item:icon(), "ServeryIcon" .. status }, { "  ", "Normal" } },
 			virt_text_pos = "inline",
 		}
 
 		table.insert(line_marks, { 0, indent_mark })
 
 		for _, part in ipairs({
-			{ dir, "ServeryLine" .. hl_type },
+			{ dir, "ServeryLine" .. status },
 			{ spacer2, "Normal" },
 			{ run_time, "ServeryTime" },
 		}) do
