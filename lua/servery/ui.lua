@@ -32,7 +32,7 @@ M.select = function(items)
 		vim.keymap.set("n", "S", function()
 			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 			if item then
-				require("servery").spawn_nvim(item.cwd)
+				require("servery").switch({ dir = item.cwd })
 				vim.defer_fn(function() M.select() end, 400)
 			end
 		end, { buf = M.buf })
