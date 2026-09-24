@@ -207,7 +207,7 @@ M.list_servers = function()
 		-- starting nvim). Processes which embed nvim, however, (should) use
 		-- a different {name}. We don't want to surface embedded nvim sessions
 		-- to the user.
-		local name = server:match("/([^/]+)%.[^.]+%.[^.]+$")
+		local name = vim.fs.basename(server):match("(.+)%.[^.]+%.[^.]+$")
 		if name == "nvim" then
 			table.insert(out, server)
 		end
