@@ -126,6 +126,34 @@ local set_highlights = function()
 	end
 end
 
+local setup_cmd = function()
+	vim.api.nvim_create_user_command("Sv", function(args)
+		local count = args.count
+		local arg = args.fargs[1]
+
+		if count > 0 then
+			M.switch({ prev = count })
+		elseif arg then
+			for _, item in ipairs(M.get_picker_items()) do
+				if item:display_name() == arg then
+					item:switch()
+					return
+				end
+				print(string.format("No configured directory '%s'", arg))
+			end
+		else
+			M.show_ui()
+		end
+	end, {
+		nargs = "?",
+		count = true,
+		complete = function()
+			---@param item servery.PickerItem
+			return vim.tbl_map(function(item) return item:display_name() end, M.get_picker_items())
+		end,
+	})
+end
+
 M.cfg = nil --[[@as servery.Cfg?]]
 
 -- A neovim session may move to a different cwd, e.g. using :cd. It's worth
@@ -143,19 +171,7 @@ M.setup = function(opts)
 		vim.api.nvim_create_autocmd("ColorScheme", { callback = set_highlights })
 
 		require("servery.utils").mkdir(M.cfg.session_dir)
-		vim.api.nvim_create_user_command("Sv", function(args)
-			local arg = args.fargs[1]
-			local which = tonumber(arg)
-			which = which and math.floor(which)
-
-			assert(which or not arg, string.format("Argument must be a number, not '%s'", arg))
-
-			if which then
-				M.switch({ prev = which })
-			else
-				M.show_ui()
-			end
-		end, { nargs = "?" })
+		setup_cmd()
 	end
 end
 
