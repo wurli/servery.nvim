@@ -28,31 +28,36 @@ M.select = function()
 		win = {
 			input = {
 				keys = {
-					["<cr>"] = { "switch", mode = { "i", "n" } },
-					["<c-g>"] = { "switch_and_detach", mode = { "i", "n" } },
-					["<c-s>"] = { "spawn", mode = { "i", "n" } },
+					["<cr>"] = { "servery_switch", mode = { "i", "n" } },
+					["<c-g>"] = { "servery_switch_and_detach", mode = { "i", "n" } },
+					["<c-s>"] = { "servery_spawn", mode = { "i", "n" } },
+					["<c-x>"] = { "servery_detach", mode = { "i", "n" } },
 				},
 			},
 		},
 		actions = {
 			---@param picker snacks.Picker
 			---@param item servery.PickerItem
-			switch = function(picker, item, _action)
+			servery_switch = function(picker, item, _action)
 				item:switch()
 				picker:close()
 			end,
 			---@param item servery.PickerItem
-			switch_and_detach = function(_picker, item, _action) item:switch(true) end,
+			servery_switch_and_detach = function(_picker, item, _action) item:switch(true) end,
 			---@param picker snacks.Picker
 			---@param item servery.PickerItem
-			spawn = function(picker, item, _action)
+			servery_spawn = function(picker, item, _action)
 				item:spawn_new()
+				vim.defer_fn(function() picker:refresh() end, 500)
+			end,
+			---@param picker snacks.Picker
+			---@param item servery.PickerItem
+			servery_detach = function(picker, item, _action)
+				item:detach()
 				vim.defer_fn(function() picker:refresh() end, 500)
 			end,
 		},
 	})
 end
-
-M.select()
 
 return M
