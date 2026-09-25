@@ -2,7 +2,7 @@ local utils = require("servery.utils")
 
 local M = {}
 
----@alias servery.ui_provider "builtin" | "snacks" | "fzf" | "telescope"
+---@alias servery.ui_provider "builtin" | "snacks" | "fzf" | "telescope" | "mini_pick"
 ---@alias servery.action "switch" | "switch_and_detach" | "spawn" | "detach"
 
 M.cfg_defaults = function()
@@ -324,6 +324,8 @@ M.show_ui = function(provider)
 		require("servery.ui.fzf").select()
 	elseif provider == "telescope" then
 		require("servery.ui.telescope").select()
+	elseif provider == "mini_pick" then
+		require("servery.ui.mini_pick").select()
 	end
 end
 
