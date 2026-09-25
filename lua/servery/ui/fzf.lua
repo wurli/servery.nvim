@@ -131,5 +131,4 @@ M.select = function()
 	})
 end
 
-M.select()
 return M

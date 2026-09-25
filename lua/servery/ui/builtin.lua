@@ -2,26 +2,26 @@ local M = {}
 
 M.buf = -99
 M.ns = vim.api.nvim_create_namespace("servery.ui")
-M.items = {}
+M.items = {} ---@type servery.PickerItem[]
 
 ---@type table<servery.action, fun()>
 local builtin_actions = {
 	switch = function()
-		local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
+		local item = M.items[vim.api.nvim_win_get_cursor(0)[1] - 5]
 		if item then
 			item:switch()
 			vim.cmd.bdelete()
 		end
 	end,
 	spawn = function()
-		local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
+		local item = M.items[vim.api.nvim_win_get_cursor(0)[1] - 5]
 		if item then
 			item:spawn_new()
 			vim.defer_fn(function() M.select() end, 400)
 		end
 	end,
 	switch_and_detach = function()
-		local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
+		local item = M.items[vim.api.nvim_win_get_cursor(0)[1] - 5]
 		if item then
 			item:switch(true)
 			-- Close the selection window when we switch to a new session
@@ -29,13 +29,33 @@ local builtin_actions = {
 		end
 	end,
 	detach = function()
-		local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
+		local item = M.items[vim.api.nvim_win_get_cursor(0)[1] - 5]
 		if item then
 			item:detach()
 			vim.defer_fn(function() M.select() end, 400)
 		end
 	end,
 }
+
+---@return [string, string[]][][]
+local make_header_block = function()
+	local cfg = require("servery").get_cfg()
+
+	local keymaps_line = {}
+	for key, action in pairs(cfg.ui.actions) do
+		table.insert(keymaps_line, { " " .. action:gsub("_", " ") .. " ", { "CursorLine" } })
+		table.insert(keymaps_line, { "(" .. key .. ") ", { "CursorLine", "Special" } })
+		table.insert(keymaps_line, { "  ", {} })
+	end
+
+	return {
+		{},
+		{ { cfg.ui.prompt, { "Title" } } },
+		{},
+		keymaps_line,
+		{},
+	}
+end
 
 ---@param items? servery.PickerItem[]
 M.select = function(items)
@@ -69,6 +89,21 @@ M.select = function(items)
 	---@type [ integer, vim.api.keyset.set_extmark ][][]
 	local marks = {}
 	local lines = {}
+
+	for _, parts in ipairs(make_header_block()) do
+		local line = ""
+		local line_marks = { { 0, { virt_text = { { "  " } }, virt_text_pos = "inline" } } }
+		for _, part in ipairs(parts) do
+			local mark_start = #line
+			line = line .. part[1]
+			for _, hl in ipairs(part[2]) do
+				table.insert(line_marks, { mark_start, { hl_group = hl, end_col = #line } })
+			end
+		end
+
+		table.insert(lines, line)
+		table.insert(marks, line_marks)
+	end
 
 	for _, item in ipairs(M.items) do
 		local starttime = item.server and item.server.starttime
@@ -119,7 +154,6 @@ M.select = function(items)
 		return
 	else
 		local w = vim.api.nvim_open_win(M.buf, true, {
-			title = "Switch Sessions",
 			style = "minimal",
 			relative = "editor",
 			col = math.floor(vim.o.columns * 0.1),
@@ -134,7 +168,5 @@ M.select = function(items)
 		})
 	end
 end
-
-M.select()
 
 return M
