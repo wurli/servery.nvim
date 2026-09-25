@@ -4,52 +4,65 @@ M.buf = -99
 M.ns = vim.api.nvim_create_namespace("servery.ui")
 M.items = {}
 
+---@type table<servery.action, fun()>
+local builtin_actions = {
+	switch = function()
+		local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
+		if item then
+			item:switch()
+			vim.cmd.bdelete()
+		end
+	end,
+	spawn = function()
+		local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
+		if item then
+			item:spawn_new()
+			vim.defer_fn(function() M.select() end, 400)
+		end
+	end,
+	switch_and_detach = function()
+		local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
+		if item then
+			item:switch(true)
+			-- Close the selection window when we switch to a new session
+			vim.cmd.bdelete()
+		end
+	end,
+	detach = function()
+		local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
+		if item then
+			item:detach()
+		end
+	end,
+}
+
 ---@param items? servery.PickerItem[]
 M.select = function(items)
+	local servery = require("servery")
+	local cfg = servery.get_cfg()
+
 	if items then
 		assert(type(items) == "table")
 	end
-	M.items = items or require("servery").get_picker_items()
+	M.items = items or servery.get_picker_items()
 
 	if not vim.api.nvim_buf_is_valid(M.buf) then
 		M.buf = vim.api.nvim_create_buf(false, true)
-
 		vim.bo[M.buf].modifiable = false
 
 		vim.keymap.set("n", "q", "<cmd>bd<cr>", { buf = M.buf })
 
-		vim.keymap.set("n", "<enter>", function()
-			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
-			if item then
-				item:switch()
-				-- Close the selection window when we switch to a new session
-				vim.cmd.bdelete()
+		for key, action in pairs(cfg.ui.actions) do
+			local fn = builtin_actions[action]
+			if fn then
+				vim.keymap.set("n", key, fn, { buf = M.buf })
+			else
+				vim.notify(
+					string.format("[Servery] Action '%s' is not available for the builtin provider", action),
+					vim.log.levels.WARN
+				)
 			end
-		end, { buf = M.buf })
-
-		vim.keymap.set("n", "S", function()
-			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
-			if item then
-				item:spawn_new()
-				vim.defer_fn(function() M.select() end, 400)
-			end
-		end, { buf = M.buf })
-
-		vim.keymap.set("n", "<c-g>", function()
-			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
-			if item then
-				item:switch(true)
-				-- Close the selection window when we switch to a new session
-				vim.cmd.bdelete()
-			end
-		end, { buf = M.buf })
-
-		vim.keymap.set("n", "x", function()
-			local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
-			if item then
-				item:detach()
-			end
-		end, { buf = M.buf })
+		end
 	end
 
 	local lines = {} ---@type string[]

@@ -1,12 +1,32 @@
 ---@diagnostic disable: param-type-mismatch
 local M = {}
 
+---@type table<servery.action, table>
+local snacks_actions = {
+	switch = { "servery_switch", mode = { "i", "n" } },
+	switch_and_detach = { "servery_switch_and_detach", mode = { "i", "n" } },
+	spawn = { "servery_spawn", mode = { "i", "n" } },
+	detach = { "servery_detach", mode = { "i", "n" } },
+}
+
 M.select = function()
 	assert(Snacks ~= nil, '`Snacks` not found. `ui = "snacks"` requires snacks.nvim to be installed!')
 
+	local servery = require("servery")
+	local cfg = servery.get_cfg()
+
+	local keys = {}
+	for key, action in pairs(cfg.ui.actions) do
+		keys[key] = snacks_actions[action]
+			or vim.notify(
+				string.format("[Servery] Action '%s' is not available for the snacks provider", action),
+				vim.log.levels.WARN
+			)
+	end
+
 	Snacks.picker.pick("switch_nvim_session", {
 		finder = function()
-			local new_items = require("servery").get_picker_items() --[[@as snacks.picker.finder.result]]
+			local new_items = servery.get_picker_items() --[[@as snacks.picker.finder.result]]
 			for i, item in ipairs(new_items) do
 				item.text = item:display_name()
 				item.idx = i
@@ -27,16 +47,7 @@ M.select = function()
 		end,
 		sort = function(a, b) return a.idx < b.idx end,
 		layout = { preview = false },
-		win = {
-			input = {
-				keys = {
-					["<cr>"] = { "servery_switch", mode = { "i", "n" } },
-					["<c-g>"] = { "servery_switch_and_detach", mode = { "i", "n" } },
-					["<c-s>"] = { "servery_spawn", mode = { "i", "n" } },
-					["<c-x>"] = { "servery_detach", mode = { "i", "n" } },
-				},
-			},
-		},
+		win = { input = { keys = keys } },
 		actions = {
 			---@param picker snacks.Picker
 			---@param item servery.PickerItem

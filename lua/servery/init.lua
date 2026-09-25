@@ -2,7 +2,8 @@ local utils = require("servery.utils")
 
 local M = {}
 
----@alias servery.ui_opts "builtin" | "snacks"
+---@alias servery.ui_provider "builtin" | "snacks"
+---@alias servery.action "switch" | "switch_and_detach" | "spawn" | "detach"
 
 M.cfg_defaults = function()
 	local cache_dir = vim.fn.stdpath("cache")
@@ -10,21 +11,39 @@ M.cfg_defaults = function()
 
 	---@class servery.Cfg
 	local out = {
-		---@type string[] | fun(): string[]
-		dirs = { "~" },
-		---@type string
+		dirs = { "~" }, ---@type string[] | fun(): string[]
 		session_dir = vim.fs.joinpath(cache_dir, "servery.nvim"),
-		---@type servery.ui_opts
-		ui = "builtin",
-		icons = {
-			current = "",
-			-- active = "",
-			active = "",
-			inactive = "",
+		ui = {
+			provider = "builtin", ---@type servery.ui_provider
+			icons = {
+				current = "",
+				active = "",
+				inactive = "",
+			},
+			---@type table<string, servery.action>
+			actions = {
+				["<enter>"] = "switch",
+				["<c-g>"] = "switch_and_detach",
+				["<c-x>"] = "detach",
+				["<c-s>"] = "spawn",
+			},
+			---@type table<string, servery.action>
+			fzf_actions = {
+				["enter"] = "switch",
+				["ctrl-g"] = "switch_and_detach",
+				["ctrl-x"] = "detach",
+				["ctrl-s"] = "spawn",
+			},
 		},
 	}
 
 	return out
+end
+
+---@return servery.Cfg
+M.get_cfg = function()
+	assert(M.cfg, "Config is empty. Please call servery.setup()")
+	return M.cfg
 end
 
 ---@class servery.PickerItem
@@ -55,8 +74,8 @@ function PickerItem:status()
 end
 
 function PickerItem:icon()
-	assert(M.cfg, "Config is empty. Please call servery.setup()")
-	return M.cfg.icons[string.lower(self:status())] or " "
+	local cfg = M.get_cfg()
+	return cfg.ui.icons[string.lower(self:status())] or " "
 end
 
 ---@param as_of? integer
@@ -163,7 +182,7 @@ M.cfg = nil --[[@as servery.Cfg?]]
 -- change too much - this could add cognitive overhead otherwise.
 M.original_cwd = nil --[[@as string?]]
 
----@param opts? Partial<servery.Cfg>
+---@param opts? servery.Cfg | {}
 M.setup = function(opts)
 	if not M.cfg then
 		M.cfg = vim.tbl_deep_extend("force", M.cfg_defaults(), opts or {})
@@ -195,8 +214,6 @@ end
 
 ---@return servery.PickerItemServer[]
 M.list_servers = function()
-	assert(M.cfg, "Config is empty. Please call servery.setup()")
-
 	local servers = vim.fn.serverlist({ peer = true }) --[[@as string[] ]]
 
 	local out = {}
@@ -215,9 +232,9 @@ M.list_servers = function()
 		end
 	end
 
-	for name, type in vim.fs.dir(M.cfg.session_dir) do
+	for name, type in vim.fs.dir(M.get_cfg().session_dir) do
 		if type == "socket" then
-			local server = vim.fs.joinpath(M.cfg.session_dir, name)
+			local server = vim.fs.joinpath(M.get_cfg().session_dir, name)
 			if not vim.tbl_contains(out, server) then
 				table.insert(out, server)
 			end
@@ -229,8 +246,8 @@ end
 
 ---@return servery.PickerItem[]
 M.list_dirs = function()
-	assert(M.cfg, "Config is empty. Please call servery.setup()")
-	local dirs = type(M.cfg.dirs) == "table" and M.cfg.dirs or M.cfg.dirs()
+	local cfg = M.get_cfg()
+	local dirs = type(cfg.dirs) == "table" and cfg.dirs or cfg.dirs()
 	return vim.tbl_map(PickerItem.new, dirs)
 end
 
@@ -293,15 +310,13 @@ M.switch = function(opts)
 	error("No options supplied")
 end
 
----@param ui? servery.ui_opts
-M.show_ui = function(ui)
-	assert(M.cfg, "Config is empty. Please call servery.setup()")
+---@param provider? servery.ui_provider
+M.show_ui = function(provider)
+	provider = provider or M.get_cfg().ui.provider
 
-	ui = ui or M.cfg.ui
-
-	if ui == "builtin" then
+	if provider == "builtin" then
 		require("servery.ui.builtin").select()
-	elseif ui == "snacks" then
+	elseif provider == "snacks" then
 		-- Snacks picker auto-refreshes, so don't pass items
 		require("servery.ui.snacks").select()
 	end
@@ -309,14 +324,12 @@ end
 
 ---@return string
 M.spawn_nvim = function(dir)
-	assert(M.cfg, "Config is empty. Please call servery.setup()")
-
 	dir = vim.fs.normalize(dir)
 	local stat = vim.uv.fs_stat(dir)
 	assert(stat and stat.type == "directory", string.format("`%s` is not a directory", dir))
 
 	local server_name = vim.fs.basename(dir) .. os.date("%Y%m%d-%H%M%S") .. ".pipe"
-	local server_file = vim.fs.joinpath(M.cfg.session_dir, server_name)
+	local server_file = vim.fs.joinpath(M.get_cfg().session_dir, server_name)
 	local cmd = { vim.v.progpath, "--headless", "--listen", server_file }
 	local cmd_str = table.concat(cmd, " ")
 

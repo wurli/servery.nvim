@@ -46,8 +46,62 @@ local get_item = function(text)
 	end
 end
 
+---@type table<servery.action, fzf-lua.config.Action>
+local fzf_actions = {
+	switch = {
+		---@param selection string[]
+		fn = function(selection, _opts, _ctx)
+			for _, text in ipairs(selection) do
+				local item = get_item(text)
+				if item then
+					item:switch()
+				end
+			end
+		end,
+	},
+	switch_and_detach = {
+		---@param selection string[]
+		fn = function(selection, _opts, _ctx)
+			for _, text in ipairs(selection) do
+				local item = get_item(text)
+				if item then
+					item:switch(true)
+				end
+			end
+		end,
+	},
+	spawn = {
+		---@param selection string[]
+		fn = function(selection, _opts, _ctx)
+			for _, text in ipairs(selection) do
+				local item = get_item(text)
+				if item then
+					item:spawn_new()
+					vim.uv.sleep(500)
+				end
+			end
+		end,
+		reload = true,
+	},
+	detach = {
+		---@param selection string[]
+		fn = function(selection, _opts, _ctx)
+			for _, text in ipairs(selection) do
+				local item = get_item(text)
+				if item then
+					item:detach()
+					vim.uv.sleep(500)
+				end
+			end
+		end,
+		reload = true,
+	},
+}
+
 M.select = function()
 	local servery = require("servery")
+	local cfg = servery.get_cfg()
+
 	local get_items = function(fzf_cb)
 		items = servery.get_picker_items()
 		time = os.time()
@@ -64,45 +118,15 @@ M.select = function()
 		-- For some reason, unless actions is supplied as a function, it's
 		-- impossible to override the default keymaps :(
 		actions = function()
-			return {
-				["enter"] = {
-					---@param selection string[]
-					fn = function(selection, _opts, _ctx)
-						for _, text in ipairs(selection) do
-							local item = get_item(text)
-							if item then
-								item:switch()
-							end
-						end
-					end,
-				},
-				["ctrl-s"] = {
-					---@param selection string[]
-					fn = function(selection, _opts, _ctx)
-						for _, text in ipairs(selection) do
-							local item = get_item(text)
-							if item then
-								item:spawn_new()
-								vim.uv.sleep(500)
-							end
-						end
-					end,
-					reload = true,
-				},
-				["ctrl-x"] = {
-					---@param selection string[]
-					fn = function(selection, _opts, _ctx)
-						for _, text in ipairs(selection) do
-							local item = get_item(text)
-							if item then
-								item:detach()
-								vim.uv.sleep(500)
-							end
-						end
-					end,
-					reload = true,
-				},
-			}
+			local out = {}
+			for key, action in pairs(cfg.ui.fzf_actions) do
+				out[key] = fzf_actions[action]
+					or vim.notify(
+						string.format("[Servery] Action '%s' is not available for the fzf provider", action),
+						vim.log.levels.WARN
+					)
+			end
+			return out
 		end,
 	})
 end
