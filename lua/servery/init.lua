@@ -212,7 +212,15 @@ local get_server_info = function(server)
 		socket = server,
 		useractive = vim.rpcrequest(chan, "nvim_get_vvar", "useractive") --[[@as integer]],
 		starttime = vim.rpcrequest(chan, "nvim_get_vvar", "starttime") --[[@as integer]],
-		original_cwd = nilify(vim.rpcrequest(chan, "nvim_exec_lua", 'return require("servery").cwd()', {})) --[[@as string?]],
+		original_cwd = nilify(vim.rpcrequest(
+			chan,
+			"nvim_exec_lua",
+			[[
+				local ok, cwd = pcall(function() require("servery").cwd() end)
+				return ok and cwd or nil
+			]],
+			{}
+		)) --[[@as string?]],
 	})
 	vim.fn.chanclose(chan)
 	return out
