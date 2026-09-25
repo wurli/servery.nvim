@@ -318,7 +318,6 @@ M.show_ui = function(provider)
 	if provider == "builtin" then
 		require("servery.ui.builtin").select()
 	elseif provider == "snacks" then
-		-- Snacks picker auto-refreshes, so don't pass items
 		require("servery.ui.snacks").select()
 	elseif provider == "fzf" then
 		require("servery.ui.fzf").select()
