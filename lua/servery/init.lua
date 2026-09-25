@@ -183,6 +183,9 @@ M.cfg = nil --[[@as servery.Cfg?]]
 -- change too much - this could add cognitive overhead otherwise.
 M.original_cwd = nil --[[@as string?]]
 
+---@return string
+M.cwd = function() return M.original_cwd or vim.fn.getcwd() end
+
 ---@param opts? servery.Cfg | {}
 M.setup = function(opts)
 	if not M.cfg then
@@ -207,7 +210,7 @@ local get_server_info = function(server)
 		socket = server,
 		useractive = vim.rpcrequest(chan, "nvim_get_vvar", "useractive") --[[@as integer]],
 		starttime = vim.rpcrequest(chan, "nvim_get_vvar", "starttime") --[[@as integer]],
-		original_cwd = nilify(vim.rpcrequest(chan, "nvim_exec_lua", 'return require("servery").original_cwd', {})) --[[@as string?]],
+		original_cwd = nilify(vim.rpcrequest(chan, "nvim_exec_lua", 'return require("servery").cwd()', {})) --[[@as string?]],
 	})
 	vim.fn.chanclose(chan)
 	return out
