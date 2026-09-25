@@ -10,7 +10,13 @@ local snacks_actions = {
 }
 
 M.select = function()
-	assert(Snacks ~= nil, '`Snacks` not found. `ui = "snacks"` requires snacks.nvim to be installed!')
+	if not Snacks then
+		vim.notify(
+			'[Servery] `Snacks` not found. `ui = "snacks"` requires snacks.nvim to be installed!',
+			vim.log.levels.ERROR
+		)
+		return
+	end
 
 	local servery = require("servery")
 	local cfg = servery.get_cfg()

@@ -99,7 +99,10 @@ local fzf_actions = {
 }
 
 M.select = function()
-	assert(FzfLua ~= nil, '`FzfLua` not found. `ui = "fzf"` requires fzf-lua to be installed!')
+	if not FzfLua then
+		vim.notify('[Servery] `FzfLua` not found. `ui = "fzf"` requires fzf-lua to be installed!', vim.log.levels.ERROR)
+		return
+	end
 
 	local servery = require("servery")
 	local cfg = servery.get_cfg()
