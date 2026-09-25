@@ -148,6 +148,25 @@ local set_highlights = function()
 	end
 end
 
+---Internal helper; use `connect()` instead
+---
+---@param server string
+---@param detach boolean?
+local switch_to = function(server, detach)
+	assert(M.cfg, "Config is empty. Please call servery.setup()")
+
+	if server == vim.v.servername then
+		return
+	end
+
+	-- If the server has just been started (e.g. by M.spawn_nvim()) it might
+	-- take a little while to actually get ready, so we should check if it
+	-- exists.
+	local ok = vim.wait(1000, function() return vim.uv.fs_stat(server) ~= nil end)
+	assert(ok, "Failed to connect to session " .. server)
+	vim.cmd({ cmd = "connect", args = { server }, bang = detach ~= nil })
+end
+
 local setup_cmd = function()
 	vim.api.nvim_create_user_command("Sv", function(args)
 		local count = args.count
@@ -155,16 +174,22 @@ local setup_cmd = function()
 
 		if count > 0 then
 			M.switch({ prev = count })
-		elseif arg then
+		elseif not arg then
+			M.show_ui()
+		else
 			for _, item in ipairs(M.get_picker_items()) do
 				if item:display_name() == arg then
 					item:switch()
 					return
 				end
-				print(string.format("No configured directory '%s'", arg))
 			end
-		else
-			M.show_ui()
+
+			local stat = vim.uv.fs_stat(vim.fs.normalize(arg))
+			if stat and stat.type == "directory" then
+				switch_to(M.spawn_nvim(arg))
+			end
+
+			print(string.format("Directory not found '%s'", arg))
 		end
 	end, {
 		nargs = "?",
@@ -359,25 +384,6 @@ M.spawn_nvim = function(dir)
 	end
 
 	return server_file
-end
-
----Internal helper; use `connect()` instead
----
----@param server string
----@param detach boolean?
-local switch_to = function(server, detach)
-	assert(M.cfg, "Config is empty. Please call servery.setup()")
-
-	if server == vim.v.servername then
-		return
-	end
-
-	-- If the server has just been started (e.g. by M.spawn_nvim()) it might
-	-- take a little while to actually get ready, so we should check if it
-	-- exists.
-	local ok = vim.wait(1000, function() return vim.uv.fs_stat(server) ~= nil end)
-	assert(ok, "Failed to connect to session " .. server)
-	vim.cmd({ cmd = "connect", args = { server }, bang = detach ~= nil })
 end
 
 ---@param opts { dir: string?, server: string? }
