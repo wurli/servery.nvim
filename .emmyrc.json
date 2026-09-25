@@ -19,7 +19,8 @@
     ],
     "library": [
       "$VIMRUNTIME/lua",
-	  "$HOME/.local/share/nvim/lazy/snacks.nvim/"
+	  "$HOME/.local/share/nvim/lazy/snacks.nvim/",
+	  "$HOME/.local/share/nvim/lazy/fzf-lua/"
     ],
     "workspaceRoots": [
       "./lua"

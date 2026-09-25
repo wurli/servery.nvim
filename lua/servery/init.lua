@@ -18,8 +18,9 @@ M.cfg_defaults = function()
 		ui = "builtin",
 		icons = {
 			current = "",
+			-- active = "",
 			active = "",
-			inactive = "",
+			inactive = "",
 		},
 	}
 
@@ -58,10 +59,11 @@ function PickerItem:icon()
 	return M.cfg.icons[string.lower(self:status())] or " "
 end
 
+---@param as_of? integer
 ---@return string?
-function PickerItem:time_since_active()
+function PickerItem:time_since_active(as_of)
 	if self.server then
-		return "(" .. utils.time_since(self.server.starttime / 1e9) .. ")"
+		return "(" .. utils.time_since(self.server.starttime / 1e9, as_of) .. ")"
 	end
 end
 
