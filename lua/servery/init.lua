@@ -15,6 +15,7 @@ M.cfg_defaults = function()
 		session_dir = vim.fs.joinpath(cache_dir, "servery.nvim"),
 		ui = {
 			provider = "builtin", ---@type servery.ui_provider
+			prompt = "Switch Nvim Session",
 			icons = {
 				current = "",
 				active = "",

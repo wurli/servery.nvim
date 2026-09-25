@@ -24,7 +24,8 @@ M.select = function()
 			)
 	end
 
-	Snacks.picker.pick("switch_nvim_session", {
+	Snacks.picker.pick("servery_sessions", {
+		title = cfg.ui.prompt,
 		finder = function()
 			local new_items = servery.get_picker_items() --[[@as snacks.picker.finder.result]]
 			for i, item in ipairs(new_items) do

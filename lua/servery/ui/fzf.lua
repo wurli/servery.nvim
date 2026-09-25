@@ -114,7 +114,7 @@ M.select = function()
 	end
 
 	FzfLua.fzf_exec(get_items, {
-		prompt = "Switch Nvim Sessions> ",
+		prompt = cfg.ui.prompt .. "> ",
 		-- For some reason, unless actions is supplied as a function, it's
 		-- impossible to override the default keymaps :(
 		actions = function()
