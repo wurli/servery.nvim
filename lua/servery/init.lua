@@ -132,8 +132,8 @@ end
 ---@type table<string, vim.api.keyset.highlight>
 local highlights = {
 	ServeryLineCurrent = { link = "@keyword" },
-	ServeryLineActive = { link = "Normal" },
-	ServeryLineInactive = { link = "Normal" },
+	ServeryLineActive = { link = "NONE" },
+	ServeryLineInactive = { link = "NONE" },
 	ServeryIconCurrent = { link = "CursorLineNr" },
 	ServeryIconActive = { link = "@label" },
 	ServeryIconInactive = { link = "ComplHint" },

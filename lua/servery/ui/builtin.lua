@@ -79,7 +79,7 @@ M.select = function(items)
 
 		---@type vim.api.keyset.set_extmark
 		local indent_mark = {
-			virt_text = { { "  ", "Normal" }, { item:icon(), "ServeryIcon" .. status }, { "  ", "Normal" } },
+			virt_text = { { "  " }, { item:icon(), "ServeryIcon" .. status }, { "  " } },
 			virt_text_pos = "inline",
 		}
 
@@ -87,7 +87,7 @@ M.select = function(items)
 
 		for _, part in ipairs({
 			{ item:display_name(), "ServeryLine" .. status },
-			{ spacer, "Normal" },
+			{ spacer },
 			{ run_time, "ServeryTime" },
 		}) do
 			local mark_start = #line
@@ -132,5 +132,7 @@ M.select = function(items)
 		})
 	end
 end
+
+M.select()
 
 return M
