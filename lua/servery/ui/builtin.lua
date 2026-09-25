@@ -32,6 +32,7 @@ local builtin_actions = {
 		local item = M.items[vim.api.nvim_win_get_cursor(0)[1]]
 		if item then
 			item:detach()
+			vim.defer_fn(function() M.select() end, 400)
 		end
 	end,
 }
@@ -65,8 +66,9 @@ M.select = function(items)
 		end
 	end
 
-	local lines = {} ---@type string[]
-	local marks = {} ---@type [ integer, vim.api.keyset.set_extmark ][][]
+	---@type [ integer, vim.api.keyset.set_extmark ][][]
+	local marks = {}
+	local lines = {}
 
 	for _, item in ipairs(M.items) do
 		local starttime = item.server and item.server.starttime
