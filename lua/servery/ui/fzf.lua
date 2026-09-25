@@ -99,6 +99,8 @@ local fzf_actions = {
 }
 
 M.select = function()
+	assert(FzfLua ~= nil, '`FzfLua` not found. `ui = "fzf"` requires fzf-lua to be installed!')
+
 	local servery = require("servery")
 	local cfg = servery.get_cfg()
 
