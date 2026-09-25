@@ -48,46 +48,63 @@ end
 
 M.select = function()
 	local servery = require("servery")
-	items = servery.get_picker_items()
-	time = os.time()
-	local lines = vim.tbl_map(function(item) return format_item(item, true) end, items)
+	local get_items = function(fzf_cb)
+		items = servery.get_picker_items()
+		time = os.time()
 
-	---@type fzf-lua.config.Base | {}
-	local opts = {
+		for _, item in ipairs(items) do
+			fzf_cb(format_item(item, true))
+		end
+
+		fzf_cb()
+	end
+
+	FzfLua.fzf_exec(get_items, {
 		prompt = "Switch Nvim Sessions> ",
-		actions = {
-			---@param picker snacks.Picker
-			---@param item servery.PickerItem
-			["ctrl-s"] = {
-				fn = function(selection, _opts, _ctx)
-					for _, text in ipairs(selection) do
-						local item = get_item(text)
-						if item then
-							item:spawn_new()
-							-- vim.defer_fn(function() picker:refresh() end, 500)
+		-- For some reason, unless actions is supplied as a function, it's
+		-- impossible to override the default keymaps :(
+		actions = function()
+			return {
+				["enter"] = {
+					---@param selection string[]
+					fn = function(selection, _opts, _ctx)
+						for _, text in ipairs(selection) do
+							local item = get_item(text)
+							if item then
+								item:switch()
+							end
 						end
-					end
-				end,
-			},
-			---@param picker snacks.Picker
-			---@param item servery.PickerItem
-			["ctrl-x"] = {
-				fn = function(selection, _opts, _ctx)
-					for _, text in ipairs(selection) do
-						local item = get_item(text)
-						if item then
-							item:detach()
-							vim.uv.sleep(500)
-							-- vim.defer_fn(function() picker:refresh() end, 500)
+					end,
+				},
+				["ctrl-s"] = {
+					---@param selection string[]
+					fn = function(selection, _opts, _ctx)
+						for _, text in ipairs(selection) do
+							local item = get_item(text)
+							if item then
+								item:spawn_new()
+								vim.uv.sleep(500)
+							end
 						end
-					end
-				end,
-				reload = true,
-			},
-		},
-	}
-
-	FzfLua.fzf_exec(lines, opts)
+					end,
+					reload = true,
+				},
+				["ctrl-x"] = {
+					---@param selection string[]
+					fn = function(selection, _opts, _ctx)
+						for _, text in ipairs(selection) do
+							local item = get_item(text)
+							if item then
+								item:detach()
+								vim.uv.sleep(500)
+							end
+						end
+					end,
+					reload = true,
+				},
+			}
+		end,
+	})
 end
 
 M.select()
