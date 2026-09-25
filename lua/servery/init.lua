@@ -178,19 +178,21 @@ end
 
 M.cfg = nil --[[@as servery.Cfg?]]
 
--- A neovim session may move to a different cwd, e.g. using :cd. It's worth
--- showing the user where the session originally started so the name doesn't
--- change too much - this could add cognitive overhead otherwise.
-M.original_cwd = nil --[[@as string?]]
-
+---A neovim session may move to a different cwd, e.g. using :cd. servery.nvim
+---keeps a record of where the session originally started, e.g. session name
+---doesn't change too much in the UI.
+---
+---Currently gets cleared on :restart unless `globals` appears in
+---'sessionoptions'.
+---
 ---@return string
-M.cwd = function() return M.original_cwd or vim.fn.getcwd() end
+M.cwd = function() return vim.g.servery_original_cwd or vim.fn.getcwd() end
 
 ---@param opts? servery.Cfg | {}
 M.setup = function(opts)
 	if not M.cfg then
 		M.cfg = vim.tbl_deep_extend("force", M.cfg_defaults(), opts or {})
-		M.original_cwd = vim.fn.getcwd()
+		vim.g.servery_original_cwd = vim.fn.getcwd()
 
 		set_highlights()
 		vim.api.nvim_create_autocmd("ColorScheme", { callback = set_highlights })
