@@ -227,16 +227,20 @@ M.setup = function(opts)
 	end
 end
 
-local nilify = function(x) return not vim.isnil(x) and x end
+local nilify = function(x) return not x == vim.NIL and x end
 
 ---@return servery.PickerItemServer
 local get_server_info = function(server)
 	local chan = vim.fn.sockconnect("pipe", server, { rpc = true })
 	assert(chan ~= 0, "Could not connect to server at " .. server)
+
+	local starttime = vim.rpcrequest(chan, "nvim_get_vvar", "starttime") --[[@as integer]]
+	local useractive = vim.fn.has("nvim-0.13") == 0 and starttime or vim.rpcrequest(chan, "nvim_get_vvar", "useractive") --[[@as integer]]
+
 	local out = PickerItem.new(vim.rpcrequest(chan, "nvim_call_function", "getcwd", {})--[[@as string]], {
 		socket = server,
-		useractive = vim.rpcrequest(chan, "nvim_get_vvar", "useractive") --[[@as integer]],
-		starttime = vim.rpcrequest(chan, "nvim_get_vvar", "starttime") --[[@as integer]],
+		useractive = useractive,
+		starttime = starttime,
 		original_cwd = nilify(vim.rpcrequest(
 			chan,
 			"nvim_exec_lua",
