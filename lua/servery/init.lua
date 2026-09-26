@@ -199,6 +199,10 @@ local setup_cmd = function()
 			return vim.tbl_map(function(item) return item:display_name() end, M.get_picker_items())
 		end,
 	})
+
+	vim.api.nvim_create_user_command("SvClose", function(args)
+		M.close({ prev = args.count > 0 and args.count or nil })
+	end, { count = true })
 end
 
 M.cfg = nil --[[@as servery.Cfg?]]
@@ -351,6 +355,66 @@ M.switch = function(opts)
 	end
 
 	error("No options supplied")
+end
+
+-- Returns the names of modified file buffers (terminals are ignored), so a
+-- session isn't closed with unsaved work in it.
+local unsaved_code = [[
+	local names = {}
+	for _, b in ipairs(vim.fn.getbufinfo({ bufmodified = 1 })) do
+		if vim.bo[b.bufnr].buftype == "" then
+			table.insert(names, vim.fn.fnamemodify(b.name, ":~:."))
+		end
+	end
+	return table.concat(names, ", ")
+]]
+
+---Close a session. With `prev`, closes the nth last visited session (as with
+---`:[N]Sv`); otherwise closes the current session after switching to the
+---last visited one. Refuses if the session has unsaved file buffers; running
+---terminal jobs are stopped.
+---
+---@param opts? { prev: integer? }
+M.close = function(opts)
+	opts = opts or {}
+
+	local servers = vim.tbl_filter(function(s) return s.server.socket ~= vim.v.servername end, M.list_servers())
+	table.sort(servers, function(a, b) return a.server.useractive > b.server.useractive end)
+
+	if not opts.prev then
+		local unsaved = loadstring(unsaved_code)()
+		if unsaved ~= "" then
+			print("Session has unsaved changes: " .. unsaved)
+			return
+		end
+
+		if not servers[1] then
+			vim.cmd("qall!")
+			return
+		end
+
+		-- :connect! stops this session once the UI has moved away
+		M.connect({ server = servers[1].server.socket }, true)
+		return
+	end
+
+	local target = servers[opts.prev]
+	if not target then
+		print(string.format("Can't get prev server %d; only %d servers running", opts.prev, #servers))
+		return
+	end
+
+	local chan = vim.fn.sockconnect("pipe", target.server.socket, { rpc = true })
+	local unsaved = vim.rpcrequest(chan, "nvim_exec_lua", unsaved_code, {})
+	if unsaved == "" then
+		-- Slightly defer the :qall! so we have time to close the channel
+		vim.rpcrequest(chan, "nvim_exec_lua", "vim.defer_fn(function() vim.cmd('qall!') end, 200)", {})
+	end
+	vim.fn.chanclose(chan)
+
+	if unsaved ~= "" then
+		print(string.format("Session '%s' has unsaved changes: %s", target:display_name(), unsaved))
+	end
 end
 
 ---@param provider? servery.ui_provider
