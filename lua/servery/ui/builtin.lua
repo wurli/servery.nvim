@@ -108,7 +108,7 @@ M.select = function(items)
 	for _, item in ipairs(M.items) do
 		local starttime = item.server and item.server.starttime
 		local spacer = starttime and "  " or ""
-		local run_time = item:time_since_active() or ""
+		local run_time = item:time_since_start() or ""
 		local status = item:status()
 
 		local line = ""
@@ -164,7 +164,7 @@ M.select = function(items)
 
 		vim.api.nvim_create_autocmd({ "WinClosed", "BufWinLeave" }, {
 			pattern = tostring(w),
-			callback = function() vim.api.nvim_buf_delete(M.buf) end,
+			callback = function() vim.api.nvim_buf_delete(M.buf, {}) end,
 		})
 	end
 end

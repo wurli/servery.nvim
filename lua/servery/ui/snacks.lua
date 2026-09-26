@@ -49,7 +49,7 @@ M.select = function()
 				{ "  ", "Normal" },
 				{ item:display_name(), "ServeryLine" .. status },
 				{ "  ", "Normal" },
-				{ item:time_since_active(), "ServeryTime" },
+				{ item:time_since_start(), "ServeryTime" },
 			}
 		end,
 		sort = function(a, b) return a.idx < b.idx end,
