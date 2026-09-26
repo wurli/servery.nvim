@@ -46,7 +46,7 @@ require("servery").setup({
 	-- Either supply the directories as an array of strings, or a function
 	-- which returns an array. Shorthands like `~` are expanded.
 	dirs = { "~" }, ---@type string[] | fun(): string[]
-	session_dir = vim.fs.joinpath(cache_dir, "servery.nvim"),
+	session_dir = vim.fs.joinpath(vim.fn.stdpath("cache"), "servery.nvim"),
 	ui = {
 		-- Options: "builtin" | "snacks" | "fzf" | "telescope" | "mini_pick"
 		provider = "builtin", ---@type servery.ui_provider
