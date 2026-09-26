@@ -19,7 +19,7 @@ local items = {} --[[@as servery.PickerItem[] ]]
 ---@return string
 local format_item = function(item, hl)
 	local icon = item:icon()
-	local active_time = item:time_since_active(time)
+	local active_time = item:time_since_start(time)
 	local status = item:status()
 
 	local pieces = {

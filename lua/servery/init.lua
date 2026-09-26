@@ -81,8 +81,8 @@ end
 
 ---@param as_of? integer
 ---@return string?
-function PickerItem:time_since_active(as_of)
-	if self.server then
+function PickerItem:time_since_start(as_of)
+	if self.server and self.server.starttime then
 		return "(" .. utils.time_since(self.server.starttime / 1e9, as_of) .. ")"
 	end
 end
@@ -126,9 +126,10 @@ end
 
 ---@class servery.ServerInfo
 ---@field socket string
+---@field pid integer
 ---@field original_cwd string?
----@field useractive integer
----@field starttime integer
+---@field useractive integer?
+---@field starttime integer?
 
 ---@type table<string, vim.api.keyset.highlight>
 local highlights = {
@@ -234,13 +235,11 @@ local get_server_info = function(server)
 	local chan = vim.fn.sockconnect("pipe", server, { rpc = true })
 	assert(chan ~= 0, "Could not connect to server at " .. server)
 
-	local starttime = vim.rpcrequest(chan, "nvim_get_vvar", "starttime") --[[@as integer]]
-	local useractive = vim.fn.has("nvim-0.13") == 0 and starttime or vim.rpcrequest(chan, "nvim_get_vvar", "useractive") --[[@as integer]]
-
 	local out = PickerItem.new(vim.rpcrequest(chan, "nvim_call_function", "getcwd", {})--[[@as string]], {
 		socket = server,
-		useractive = useractive,
-		starttime = starttime,
+		pid = vim.rpcrequest(chan, "nvim_call_function", "getpid", {}) --[[@as integer]],
+		useractive = vim.fn.has("nvim-0.13") == 1 and vim.rpcrequest(chan, "nvim_get_vvar", "useractive") or nil --[[@as integer?]],
+		starttime = vim.fn.has("nvim-0.13") == 1 and vim.rpcrequest(chan, "nvim_get_vvar", "starttime") or nil --[[@as integer?]],
 		original_cwd = nilify(vim.rpcrequest(
 			chan,
 			"nvim_exec_lua",
@@ -320,7 +319,9 @@ M.get_picker_items = function()
 				return false
 			end
 
-			return a.server.useractive > b.server.useractive
+			local sort_by = vim.fn.has("nvim-0.13") == 1 and "useractive" or "pid"
+
+			return a.server[sort_by] > b.server[sort_by]
 		end
 
 		return a.cwd < b.cwd

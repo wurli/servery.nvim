@@ -33,7 +33,8 @@ https://github.com/user-attachments/assets/17ae8112-29fa-4467-ad2b-98180412a127
 ## Install/configure
 
 > [!NOTE]
-> servery.nvim requires nvim 0.12+!
+> servery.nvim requires nvim 0.12+. Display of server elapsed times requires
+> 0.13+.
 
 `vim.pack` (nvim 0.12+):
 

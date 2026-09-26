@@ -37,7 +37,7 @@ M.select = function()
 		return displayer({
 			{ item:icon(), "ServeryIcon" .. status },
 			{ item:display_name(), "ServeryLine" .. status },
-			{ item:time_since_active(time) or "", "ServeryTime" },
+			{ item:time_since_start(time) or "", "ServeryTime" },
 		})
 	end
 
