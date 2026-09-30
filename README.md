@@ -95,9 +95,11 @@ require("servery").setup({
 
 ## Keybinds/commands
 
-* `:Sv`: Open the servery ui
-* `:[N]Sv`: Go to the nth last visited session
-* `:Sv [dir]`: Go to the session in `[dir]`, creating it if it's not already open
+* `:Sv`: Open the servery ui.
+* `:[N]Sv[!]`: Go to the nth last visited session. Also stops the current session if `!` is used.
+* `:Sv[!] [dir]`: Go to the session in `[dir]`, creating it if it's not already open. Also stops the current session if `!` is used.
+* `:[N]SvClose`: Close the nth last visited session.
+* `:SvClose [dir]`: Close the session in `[dir]`.
 
 Keymaps should be set up manually:
 

@@ -16,8 +16,9 @@ M.select = function()
 	local time = os.time()
 	local items = {} --[[@as servery.PickerItem[] ]]
 
+	---@return table[]
 	local get_items = function()
-		items = servery.get_picker_items()
+		items = servery.get_picker_items() --[[@as table[] ]]
 		time = os.time()
 		for _, item in ipairs(items) do
 			item.text = item:display_name()
@@ -90,6 +91,7 @@ M.select = function()
 	for key, action in pairs(cfg.ui.actions) do
 		local fn = mini_actions[action]
 		if fn then
+			---@diagnostic disable-next-line: assign-type-mismatch
 			mappings["servery_" .. action] = {
 				char = normalize_key(key),
 				func = function()
