@@ -59,7 +59,7 @@ require("servery").setup({
 			vim.fn.serverlist({ peer = true })
 		)
 	end,
-	session_dir = vim.fs.joinpath(vim.fn.stdpath("cache"), "servery.nvim"),
+	session_dir = vim.fs.normalize(vim.fs.joinpath(vim.fn.stdpath("run"), "..", "servery")),
 	-- Command and additional argument(s) used to start a new session. servery appends
 	-- `--headless --listen {socket}`.
 	-- default uses `vim.v.progpath` / current running nvim, user can add
