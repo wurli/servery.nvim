@@ -94,9 +94,6 @@ local setup_cmds = function()
 end
 
 cfg_defaults = function()
-	local cache_dir = vim.fn.stdpath("cache")
-	assert(type(cache_dir) == "string")
-
 	---@class servery.Cfg
 	local out = {
 		---@type string[] | fun(): string[]
@@ -110,7 +107,7 @@ cfg_defaults = function()
 				vim.fn.serverlist({ peer = true })
 			)
 		end,
-		session_dir = vim.fs.joinpath(cache_dir, "servery.nvim"),
+		session_dir = vim.fs.normalize(vim.fs.joinpath(vim.fn.stdpath("run") --[[@as string]], "..", "servery")),
 		---@type string[]
 		spawn_cmd = { vim.v.progpath },
 		ui = {
@@ -307,7 +304,7 @@ spawn_nvim = function(dir)
 	local stat = vim.uv.fs_stat(dir)
 	assert(stat and stat.type == "directory", string.format("`%s` is not a directory", dir))
 
-	local server_name = vim.fs.basename(dir) .. os.date("%Y%m%d-%H%M%S") .. ".pipe"
+	local server_name = vim.fs.basename(dir):sub(1, 5) .. "-" .. os.date("%Y%m%d-%H%M%S") .. ".pipe"
 	local server_file = vim.fs.joinpath(M.get_cfg().session_dir, server_name)
 	local cmd = vim.list_extend(vim.deepcopy(M.get_cfg().spawn_cmd), { "--headless", "--listen", server_file })
 	local cmd_str = table.concat(cmd, " ")
