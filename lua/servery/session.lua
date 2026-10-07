@@ -45,6 +45,7 @@ end
 -- TODO: warn unsaved files, etc?
 ---@param detach boolean?
 function Session:switch(detach)
+	require("servery").get_cfg().on_switch(self)
 	connect({
 		server = self.server and self.server.socket,
 		dir = self.cwd,

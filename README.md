@@ -67,6 +67,9 @@ require("servery").setup({
 	-- from PATH, and / or needs extra startup setup, etc...
 	---@type string[]
 	spawn_cmd = { vim.v.progpath },
+	-- called in the current nvim instance before switching to a session.
+	---@param s servery.Session
+	on_switch = function(s) end,
 	ui = {
 		-- Options: "builtin" | "snacks" | "fzf" | "telescope" | "mini_pick"
 		provider = "builtin", ---@type servery.ui_provider

@@ -52,7 +52,7 @@ local setup_cmds = function()
 			elseif arg then
 				local stat = vim.uv.fs_stat(vim.fs.normalize(arg))
 				if stat and stat.type == "directory" then
-					utils.switch_to(spawn_nvim(arg), bang)
+					Session.new(arg):switch(bang)
 				else
 					utils.notify_error("No such directory found '%s'", arg)
 				end
@@ -110,6 +110,8 @@ cfg_defaults = function()
 		session_dir = vim.fs.normalize(vim.fs.joinpath(vim.fn.stdpath("run") --[[@as string]], "..", "servery")),
 		---@type string[]
 		spawn_cmd = { vim.v.progpath },
+		---@param s servery.Session
+		on_switch = function(s) end,
 		ui = {
 			provider = "builtin", ---@type servery.ui_provider
 			prompt = "Switch Nvim Session",
