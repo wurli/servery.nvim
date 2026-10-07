@@ -48,7 +48,7 @@ require("servery").setup({
 	-- which returns an array. Shorthands like `~` are expanded. The default
 	-- lists the non-hidden dirs in your home directory.
 	---@type string[] | fun(): string[]
-	dirs = function() return vim.fs.glob("~/*", true, true) end,
+	dirs = function() return vim.fn.glob("~/*", true, true) end,
 	---Function which discovers running servers which servery can attach to.
 	---@type fun(): string[]
 	servers = function()
