@@ -273,11 +273,11 @@ M.list_sessions = function(status)
 		end
 
 		if a.server and b.server then
-			if a.server.socket == vim.v.servername then
+			if vim.fs.normlize(a.server.socket) == vim.v.servername then
 				return true
 			end
 
-			if b.server.socket == vim.v.servername then
+			if vim.fs.normalize(b.server.socket) == vim.v.servername then
 				return false
 			end
 
