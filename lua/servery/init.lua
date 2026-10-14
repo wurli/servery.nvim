@@ -48,11 +48,11 @@ local setup_cmds = function()
 		if count or arg then
 			local session = get_session({ count = count, name = arg })
 			if session then
-				session:switch()
+				session:switch(bang)
 			elseif arg then
 				local stat = vim.uv.fs_stat(vim.fs.normalize(arg))
 				if stat and stat.type == "directory" then
-					utils.switch_to(spawn_nvim(arg), bang)
+					Session.new(vim.fs.normalize(arg)):switch(bang)
 				else
 					utils.notify_error("No such directory found '%s'", arg)
 				end
@@ -320,9 +320,26 @@ end
 
 ---@param opts { dir: string?, server: string? }
 ---@param detach boolean?
-connect = function(opts, detach)
+---@param before_connect? fun(socket: string): servery.SwitchCompletion?
+connect = function(opts, detach, before_connect)
 	assert(opts.dir or opts.server, "Must supply `dir` or `server`")
-	utils.switch_to(opts.server or spawn_nvim(opts.dir), detach)
+
+	local socket = opts.server or spawn_nvim(opts.dir)
+	-- before switching, complete "ServerySwitchPost" preparations
+	local finish = before_connect and before_connect(socket)
+
+	local switch_ok, switch_err = pcall(utils.switch_to, socket, detach)
+
+	if finish then
+		local cleanup_ok, cleanup_err = pcall(finish, switch_ok)
+		if not cleanup_ok then
+			utils.notify_warn("Failed to clean up switch preparation: %s", cleanup_err)
+		end
+	end
+
+	if not switch_ok then
+		error(switch_err)
+	end
 end
 
 return M

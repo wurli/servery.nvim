@@ -125,6 +125,33 @@ vim.keymap.set("n", "<c-f>", "<cmd>Sv<cr>", { desc = "Switch nvim sessions" })
 vim.keymap.set("n", "ZV", "<cmd>1Sv<cr>", { desc = "Go to previous session" })
 ```
 
+## Autocommands
+
+servery.nvim provides some plugin autocommands:
+
+* `ServerySwitchPre`: Emitted in source session before starting or connecting to the target
+session.
+* `ServerySwitchPost`: Emitted in destination session after UI attaches.
+
+Autocommands provide `ev.data` in their callback. It includes `cwd` and, when switching
+to an already-running session, `server`.
+
+``` lua
+vim.api.nvim_create_autocmd("User", {
+	pattern = "ServerySwitchPre",
+	callback = function(ev)
+		vim.notify("Switching to " .. ev.data.cwd)
+	end,
+})
+
+vim.api.nvim_create_autocmd("User", {
+	pattern = "ServerySwitchPost",
+	callback = function(ev)
+		vim.notify("Switched to " .. ev.data.cwd)
+	end,
+})
+```
+
 ## Why servery.nvim?
 
 I previously managed sessions with Prime's

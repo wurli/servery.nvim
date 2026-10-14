@@ -12,10 +12,20 @@ Session.__index = Session
 ---@field server servery.ServerInfo
 
 ---@param cwd string
----@param server servery.ServerInfo
+---@param server? servery.ServerInfo
 Session.new = function(cwd, server)
 	--
 	return setmetatable({ cwd = cwd, server = server }, Session)
+end
+
+--- get data for autocommand callback
+---@param session servery.Session
+---@return { cwd: string, server: servery.ServerInfo? }
+Session.get_autocmd_data = function(session)
+	return {
+		cwd = session.cwd,
+		server = session.server,
+	}
 end
 
 function Session:status()
@@ -45,10 +55,15 @@ end
 -- TODO: warn unsaved files, etc?
 ---@param detach boolean?
 function Session:switch(detach)
+	vim.api.nvim_exec_autocmds("User", {
+		pattern = "ServerySwitchPre",
+		data = Session.get_autocmd_data(self),
+	})
+
 	connect({
 		server = self.server and self.server.socket,
 		dir = self.cwd,
-	}, detach)
+	}, detach, function(socket) return utils.prepare_switch_post(socket, Session.get_autocmd_data(self)) end)
 end
 
 function Session:spawn_new() spawn_nvim(self.cwd) end
