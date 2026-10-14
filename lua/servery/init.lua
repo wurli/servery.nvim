@@ -195,28 +195,37 @@ end
 ---@return string
 M.cwd = function() return vim.g.servery_original_cwd or vim.fn.getcwd() end
 
----@return servery.SessionActive
+---@return servery.SessionActive?
 local get_server_info = function(server)
-	local chan = vim.fn.sockconnect("pipe", server, { rpc = true })
-	assert(chan ~= 0, "Could not connect to server at " .. server)
+	-- Socket files can outlive their servers after a crash or reboot.
+	local connected, chan = pcall(vim.fn.sockconnect, "pipe", server, { rpc = true })
+	if not connected or chan == 0 then
+		return nil
+	end
 
-	local out = Session.new(vim.rpcrequest(chan, "nvim_call_function", "getcwd", {})--[[@as string]], {
-		socket = server,
-		pid = vim.rpcrequest(chan, "nvim_call_function", "getpid", {}) --[[@as integer]],
-		useractive = vim.fn.has("nvim-0.13") == 1 and vim.rpcrequest(chan, "nvim_get_vvar", "useractive") or nil --[[@as integer?]],
-		starttime = vim.fn.has("nvim-0.13") == 1 and vim.rpcrequest(chan, "nvim_get_vvar", "starttime") or nil --[[@as integer?]],
-		original_cwd = utils.nilify(vim.rpcrequest(
-			chan,
-			"nvim_exec_lua",
-			[[
+	-- A server can also exit between connecting and querying its metadata.
+	local ok, out = pcall(function()
+		return Session.new(vim.rpcrequest(chan, "nvim_call_function", "getcwd", {})--[[@as string]], {
+			socket = server,
+			pid = vim.rpcrequest(chan, "nvim_call_function", "getpid", {}) --[[@as integer]],
+			useractive = vim.fn.has("nvim-0.13") == 1 and vim.rpcrequest(chan, "nvim_get_vvar", "useractive") or nil --[[@as integer?]],
+			starttime = vim.fn.has("nvim-0.13") == 1 and vim.rpcrequest(chan, "nvim_get_vvar", "starttime") or nil --[[@as integer?]],
+			original_cwd = utils.nilify(vim.rpcrequest(
+				chan,
+				"nvim_exec_lua",
+				[[
 				local ok, cwd = pcall(function() require("servery").cwd() end)
 				return ok and cwd or nil
 			]],
-			{}
-		)) --[[@as string?]],
-	})
+				{}
+			)) --[[@as string?]],
+		})
+	end)
 	vim.fn.chanclose(chan)
-	return out
+	if not ok then
+		return nil
+	end
+	return out --[[@as servery.SessionActive]]
 end
 
 ---List running servers
@@ -235,7 +244,7 @@ list_servers = function()
 		end
 	end
 
-	return vim.tbl_map(get_server_info, out)
+	return vim.tbl_values(vim.tbl_map(get_server_info, out))
 end
 
 ---List configured session directories
