@@ -195,10 +195,13 @@ end
 ---@return string
 M.cwd = function() return vim.g.servery_original_cwd or vim.fn.getcwd() end
 
----@return servery.SessionActive
+---@return servery.SessionActive?
 local get_server_info = function(server)
-	local chan = vim.fn.sockconnect("pipe", server, { rpc = true })
-	assert(chan ~= 0, "Could not connect to server at " .. server)
+	local ok, res = pcall(vim.fn.sockconnect, "pipe", server, { rpc = true })
+	if res == 0 or not ok then
+		return
+	end
+	local chan = res --[[@as integer]]
 
 	local out = Session.new(vim.rpcrequest(chan, "nvim_call_function", "getcwd", {})--[[@as string]], {
 		socket = server,
@@ -235,7 +238,7 @@ list_servers = function()
 		end
 	end
 
-	return vim.tbl_map(get_server_info, out)
+	return vim.iter(out):map(get_server_info):filter(function(x) return x ~= nil end):totable()
 end
 
 ---List configured session directories
