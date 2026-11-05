@@ -198,10 +198,12 @@ M.cwd = function() return vim.g.servery_original_cwd or vim.fn.getcwd() end
 ---@return servery.SessionActive?
 local get_server_info = function(server)
 	-- Socket files can outlive their servers after a crash or reboot.
-	local connected, chan = pcall(vim.fn.sockconnect, "pipe", server, { rpc = true })
-	if not connected or chan == 0 then
+	local connected, res = pcall(vim.fn.sockconnect, "pipe", server, { rpc = true })
+	if not connected or res == 0 then
 		return nil
 	end
+
+	local chan = res --[[@as integer]]
 
 	-- A server can also exit between connecting and querying its metadata.
 	local ok, out = pcall(function()
